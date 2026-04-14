@@ -1,17 +1,18 @@
 import Joi from "joi";
 
-export const transactionSchema = Joi.object({
-  title: Joi.string()
-    .min(2)
-    .max(100)
-    .required(),
+/* CREATE schema */
 
+export const transactionSchema = Joi.object({
   amount: Joi.number()
     .positive()
     .required(),
 
-  type: Joi.string()
-    .valid("income", "expense")
+  receiver: Joi.string()
+    .min(2)
+    .max(100)
+    .required(),
+
+  date: Joi.date()
     .required(),
 
   category: Joi.string()
@@ -20,11 +21,43 @@ export const transactionSchema = Joi.object({
       "Travel",
       "Shopping",
       "Bills",
-      "Salary",
-      "Other"
+      "Other",
+      "Salary"
     )
     .required(),
 
-  date: Joi.date()
-    .optional()
+  type: Joi.string()
+    .valid("income", "expense")
+    .required(),
+
+  note: Joi.string().allow("")
+});
+
+
+/* UPDATE schema — paste HERE */
+
+export const updateTransactionSchema = Joi.object({
+  amount: Joi.number().positive(),
+
+  receiver: Joi.string()
+    .min(2)
+    .max(100),
+
+  date: Joi.date(),
+
+  category: Joi.string().valid(
+    "Food",
+    "Travel",
+    "Shopping",
+    "Bills",
+    "Other",
+    "Salary"
+  ),
+
+  type: Joi.string().valid(
+    "income",
+    "expense"
+  ),
+
+  note: Joi.string().allow("")
 });
