@@ -55,7 +55,7 @@ router.get("/monthly-summary", authMiddleware, getMonthlySummary);
 
 router.get("/yearly-summary", authMiddleware, getYearlySummary);
 
-router.get("/category-summary", authMiddleware, getCategorySummary);
+router.get("/summary/category", authMiddleware, getCategorySummary);
 
 router.get("/dashboard", authMiddleware, getDashboardData);
 

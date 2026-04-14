@@ -320,33 +320,50 @@ export const getYearlySummary = async (req, res) => {
 
 export const getCategorySummary = async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+
+    const matchStage = {
+      user: req.user,
+      type: "expense", // only expenses make sense for category summary
+    };
+
+    // Optional date filtering
+    if (startDate || endDate) {
+      matchStage.date = {};
+
+      if (startDate) {
+        matchStage.date.$gte = new Date(startDate);
+      }
+
+      if (endDate) {
+        matchStage.date.$lte = new Date(endDate);
+      }
+    }
+
     const summary = await Transaction.aggregate([
       {
-        $match: {
-          user: req.user,
-        },
+        $match: matchStage,
       },
       {
         $group: {
           _id: "$category",
-          total: {
-            $sum: "$amount",
-          },
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
         },
       },
       {
-        $sort: {
-          total: -1,
-        },
+        $sort: { total: -1 },
       },
     ]);
 
-    res.json({
+    res.status(200).json({
       success: true,
       summary,
     });
+
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
