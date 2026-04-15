@@ -10,10 +10,15 @@ export const transactionSchema = Joi.object({
   receiver: Joi.string()
     .min(2)
     .max(100)
-    .required(),
+   .allow("")
+   .optional(),
+
+   project: Joi.string()
+  .optional()
+  .allow(null),
 
   date: Joi.date()
-    .required(),
+    .optional(),
 
   category: Joi.string()
     .valid(
@@ -30,7 +35,10 @@ export const transactionSchema = Joi.object({
     .valid("income", "expense")
     .required(),
 
-  note: Joi.string().allow("")
+  note: Joi.string()
+  .max(500)
+    .allow("")
+    .optional(),
 });
 
 
@@ -59,5 +67,8 @@ export const updateTransactionSchema = Joi.object({
     "expense"
   ),
 
-  note: Joi.string().allow("")
+  note: Joi.string()
+   .max(500)
+    .allow("")
+    .optional(),
 });

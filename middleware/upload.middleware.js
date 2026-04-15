@@ -47,7 +47,7 @@
 // export default upload;
 
 
-
+//upload middleware js 
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
