@@ -75,4 +75,4 @@ const upload = multer({
   }
 });
 
-export default upload;
+export default upload; 
