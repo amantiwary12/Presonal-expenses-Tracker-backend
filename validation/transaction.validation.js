@@ -1,3 +1,4 @@
+//transaction validation
 import Joi from "joi";
 
 /* CREATE schema */
@@ -25,9 +26,13 @@ export const transactionSchema = Joi.object({
       "Food",
       "Travel",
       "Shopping",
+       "Transport",   // ← ADD THIS
       "Bills",
       "Other",
-      "Salary"
+      "Salary",
+      "Education",
+      "Entertainment",
+      "Healthcare"
     )
     .required(),
 

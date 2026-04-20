@@ -1,3 +1,4 @@
+//transaction route
 import express from "express";
 
 import upload from "../middleware/upload.middleware.js";
@@ -23,58 +24,8 @@ import {
   getCategorySummary,
   getDashboardData,
   exportTransactions,
+  clearTransactions,
 } from "../controllers/transaction.controller.js";
-
-// const router = express.Router();
-
-// router.post(
-//   "/",
-//   authMiddleware,
-//   upload.single("screenshot"),
-//   validate(transactionSchema),
-//   createTransaction
-// );
-
-// router.put(
-//   "/:id",
-//   authMiddleware,
-//   upload.single("screenshot"),
-//   validate(updateTransactionSchema),
-//   updateTransaction,
-// );
-
-// router.get("/", authMiddleware, getTransactions);
-
-// router.delete("/:id", authMiddleware, deleteTransaction);
-
-// router.put(
-//   "/:id",
-//   authMiddleware,
-//   upload.single("screenshot"),
-//   validate(transactionSchema),
-//   updateTransaction,
-// );
-
-// router.get("/summary", authMiddleware, getSummary);
-
-// router.get("/weekly-summary", authMiddleware, getWeeklySummary);
-
-// router.get("/monthly-summary", authMiddleware, getMonthlySummary);
-
-// router.get("/yearly-summary", authMiddleware, getYearlySummary);
-
-// router.get("/summary/category", authMiddleware, getCategorySummary);
-
-// router.get("/dashboard", authMiddleware, getDashboardData);
-
-// router.get("/export", authMiddleware, exportTransactions);
-
-// router.get("/summary/weekly", authMiddleware, getWeeklySummary);
-
-// router.get("/summary/yearly", authMiddleware, getYearlySummary);
-
-// export default router;
-
 
 const router = express.Router();
 
@@ -84,7 +35,7 @@ router.post(
   authMiddleware,
   upload.single("screenshot"),
   validate(transactionSchema),
-  createTransaction
+  createTransaction,
 );
 
 /* READ */
@@ -96,7 +47,7 @@ router.put(
   authMiddleware,
   upload.single("screenshot"),
   validate(updateTransactionSchema),
-  updateTransaction
+  updateTransaction,
 );
 
 /* DELETE */
@@ -116,5 +67,7 @@ router.get("/summary/category", authMiddleware, getCategorySummary);
 router.get("/dashboard", authMiddleware, getDashboardData);
 
 router.get("/export", authMiddleware, exportTransactions);
+
+router.delete("/clear", authMiddleware, clearTransactions);
 
 export default router;

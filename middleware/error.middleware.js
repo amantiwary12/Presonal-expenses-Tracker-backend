@@ -1,10 +1,29 @@
-const errorHandler = (err, req, res, next) => {
-  console.error(err);
+import multer from "multer";
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Server Error"
-  });
+const errorHandler = (
+  err,
+  req,
+  res,
+  next
+) => {
+
+  // Multer file upload errors
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  // Other errors
+  if (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  next();
 };
 
 export default errorHandler;

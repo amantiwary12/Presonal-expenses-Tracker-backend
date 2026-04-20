@@ -1,5 +1,7 @@
+//project controller 
 import Transaction from "../models/transaction.model.js";
 import Project from "../models/Project.model.js";
+import { sendNotification } from "../utils/sendNotification.js";
 import mongoose from "mongoose";
 
 export const createProject = async (req, res) => {
@@ -264,7 +266,6 @@ export const updateProjectStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -272,8 +273,12 @@ export const updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Validate status
-    const allowedStatus = ["active", "completed", "on-hold", "cancelled"];
+    const allowedStatus = [
+      "active",
+      "completed",
+      "on-hold",
+      "cancelled",
+    ];
 
     if (!allowedStatus.includes(status)) {
       return res.status(400).json({
@@ -282,18 +287,29 @@ export const updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Build update object
+    const existingProject = await Project.findOne({
+      _id: id,
+      user: req.user,
+    });
+
+    if (!existingProject) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
     const updateData = {
       status,
     };
 
-    // Set completedAt only when completed
-    if (status === "completed") {
+    if (
+      status === "completed" &&
+      existingProject.status !== "completed"
+    ) {
       updateData.completedAt = new Date();
     }
 
-    // Optional but important:
-    // remove completedAt if reopening project
     if (status === "active") {
       updateData.completedAt = null;
     }
@@ -306,14 +322,19 @@ export const updateProjectStatus = async (req, res) => {
       updateData,
       {
         new: true,
-      },
+      }
     );
 
-    if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+    if (
+      existingProject.status !== "completed" &&
+      status === "completed"
+    ) {
+      sendNotification({
+        userId: req.user,
+        title: "Project Completed",
+        message: `Project "${project.name}" has been completed`,
+        type: "project",
+      }).catch(console.error);
     }
 
     res.status(200).json({
@@ -321,6 +342,7 @@ export const updateProjectStatus = async (req, res) => {
       message: "Project status updated",
       project,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -430,6 +452,76 @@ export const getProjectDashboard = async (req, res) => {
       transactions: transactionCount,
       completedAt: project.completedAt || null,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+export const deleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1) Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID",
+      });
+    }
+
+    // 2) Find project
+    const project = await Project.findOne({
+      _id: id,
+      user: req.user,
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // 3) Find all related transactions
+    const transactions = await Transaction.find({
+      project: id,
+      user: req.user,
+    });
+
+    // 4) Delete screenshots from Cloudinary
+    for (const txn of transactions) {
+      if (
+        txn.screenshot &&
+        txn.screenshot.public_id
+      ) {
+        try {
+          await cloudinary.uploader.destroy(
+            txn.screenshot.public_id
+          );
+        } catch (err) {
+          console.log("Cloudinary delete error");
+        }
+      }
+    }
+
+    // 5) Delete transactions
+    await Transaction.deleteMany({
+      project: id,
+      user: req.user,
+    });
+
+    // 6) Delete project
+    await Project.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Project deleted successfully",
+    });
+
   } catch (error) {
     res.status(500).json({
       success: false,

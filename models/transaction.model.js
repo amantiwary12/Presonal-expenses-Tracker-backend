@@ -1,3 +1,4 @@
+//transaction model
 import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
@@ -43,7 +44,16 @@ const transactionSchema = new mongoose.Schema(
     },
 
     screenshot: {
+      url: {
+        type: String,
+      },
+      public_id: {
+        type: String,
+      },
+    },
+    receipt: {
       type: String,
+      default: null,
     },
   },
   { timestamps: true },

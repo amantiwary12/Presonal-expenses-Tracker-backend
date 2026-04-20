@@ -1,9 +1,20 @@
-export const sendNotification = async (
-  deviceToken,
+//sendnotification utils
+import Notification from "../models/Notification.model.js";
+
+export const sendNotification = async ({
+  userId,
   title,
-  message
-) => {
-  console.log("NOTIFICATION:");
-  console.log(title);
-  console.log(message);
+  message,
+  type,
+}) => {
+  try {
+    await Notification.create({
+      user: userId,
+      title,
+      message,
+      type,
+    });
+  } catch (error) {
+    console.error("Notification error:", error);
+  }
 };

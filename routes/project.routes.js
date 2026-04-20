@@ -1,3 +1,4 @@
+//project route 
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
 
@@ -9,6 +10,7 @@ import {
   getProjectSummary,
   getProjectTransactions,
   updateProjectStatus,
+   deleteProject 
 } from "../controllers/project.controller.js";
 
 const router = express.Router();
@@ -24,6 +26,8 @@ router.get("/:id/dashboard", authMiddleware, getProjectDashboard);
 router.get("/:id/summary", authMiddleware, getProjectSummary);
 
 router.get("/:id/transactions", authMiddleware, getProjectTransactions);
+
+router.delete("/:id", authMiddleware, deleteProject);
 
 router.patch("/:id/status", authMiddleware, updateProjectStatus);
 

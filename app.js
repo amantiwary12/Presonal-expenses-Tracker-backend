@@ -1,3 +1,4 @@
+//app .js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -15,29 +16,25 @@ dotenv.config();
 const app = express();
 
 app.use(
-  express.json({
-    limit: "10kb",
-  })
+  express.json()
 );
 
-app.use(morgan("dev"));
+// app.use(morgan("dev"));
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "*",
     credentials: true,
-  })
+  }),
 );
 
 app.use(helmet());
 
-app.use(mongoSanitize());
-
-app.use("/uploads", express.static("uploads"));
+// app.use(mongoSanitize());
 
 app.use("/api/auth", authRoutes);
 
-app.use("/api/transactions", transactionRoutes);
+app.use("/uploads", express.static("uploads"));
 
 app.use(errorHandler);
 
