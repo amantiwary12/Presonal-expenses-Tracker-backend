@@ -21,20 +21,31 @@ export const transactionSchema = Joi.object({
   date: Joi.date()
     .optional(),
 
-  category: Joi.string()
+ category: Joi.when("type", {
+  is: "expense",
+  then: Joi.string()
     .valid(
       "Food",
       "Travel",
       "Shopping",
-       "Transport",   // ← ADD THIS
+      "Transport",
       "Bills",
-      "Other",
-      "Salary",
       "Education",
       "Entertainment",
-      "Healthcare"
+      "Healthcare",
+      "Other"
     )
     .required(),
+
+  otherwise: Joi.string()
+    .valid(
+      "Salary",
+      "Business",
+      "Investment",
+      "Other"
+    )
+    .required(),
+}),
 
   type: Joi.string()
     .valid("income", "expense")
@@ -58,14 +69,27 @@ export const updateTransactionSchema = Joi.object({
 
   date: Joi.date(),
 
-  category: Joi.string().valid(
+  category: Joi.when("type", {
+  is: "expense",
+  then: Joi.string().valid(
     "Food",
     "Travel",
     "Shopping",
+    "Transport",
     "Bills",
-    "Other",
-    "Salary"
+    "Education",
+    "Entertainment",
+    "Healthcare",
+    "Other"
   ),
+
+  otherwise: Joi.string().valid(
+    "Salary",
+    "Business",
+    "Investment",
+    "Other"
+  ),
+}),
 
   type: Joi.string().valid(
     "income",
