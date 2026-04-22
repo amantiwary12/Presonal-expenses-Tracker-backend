@@ -101,6 +101,88 @@ export const createTransaction = async (req, res) => {
   }
 };
 
+export const getDailyExpenses = async (req, res) => {
+  try {
+
+    const { startDate, endDate, project } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "startDate and endDate are required",
+      });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format",
+      });
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const matchStage = {
+      user: new mongoose.Types.ObjectId(req.user),
+      type: "expense",
+      date: {
+        $gte: start,
+        $lte: end,
+      },
+    };
+
+    if (project) {
+      matchStage.project = project;
+    }
+
+    const expenses = await Transaction.aggregate([
+      {
+        $match: matchStage,
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$date",
+              timezone: "Asia/Kolkata",
+            },
+          },
+          total: {
+            $sum: "$amount",
+          },
+        },
+      },
+      {
+        $sort: {
+          _id: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: expenses.length,
+      data: expenses,
+    });
+
+  } catch (error) {
+
+    console.error("DAILY EXPENSE ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+
+  }
+};
+
+
 // getTransactions with pagination, filtering by type, category and date range
 
 export const getTransactions = async (req, res) => {

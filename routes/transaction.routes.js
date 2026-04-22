@@ -25,6 +25,7 @@ import {
   getDashboardData,
   exportTransactions,
   clearTransactions,
+  getDailyExpenses,
 } from "../controllers/transaction.controller.js";
 
 const router = express.Router();
@@ -55,6 +56,8 @@ router.delete("/:id", authMiddleware, deleteTransaction);
 
 /* SUMMARIES */
 router.get("/summary", authMiddleware, getSummary);
+
+router.get("/daily-expenses", authMiddleware, getDailyExpenses);
 
 router.get("/weekly-summary", authMiddleware, getWeeklySummary);
 
