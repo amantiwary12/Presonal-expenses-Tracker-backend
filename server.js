@@ -11,6 +11,7 @@ import budgetRoutes from "./routes/budget.routes.js";
 import projectRoutes from "./routes/project.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 connectDB();
 
@@ -26,6 +27,7 @@ app.use("/api/budget", budgetRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/users", userRoutes);
 
 const PORT = process.env.PORT || 8000;
 

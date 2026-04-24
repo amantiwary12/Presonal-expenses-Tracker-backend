@@ -40,7 +40,7 @@ export const createTransaction = async (req, res) => {
     if (req.body.project) {
       project = await Project.findOne({
         _id: req.body.project,
-        user: req.user,
+        user: req.user._id,
       });
 
       if (!project) {
@@ -60,7 +60,7 @@ export const createTransaction = async (req, res) => {
     }
 
     const transaction = await Transaction.create({
-      user: req.user,
+      user: req.user._id,
       amount,
       receiver: req.body.receiver,
       date: req.body.date || new Date(),
@@ -198,12 +198,24 @@ export const getTransactions = async (req, res) => {
       project,
     } = req.query;
 
-    const pageNumber = Number(page) || 1;
-    const limitNumber = Number(limit) || 10;
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
 
     const query = {
-      user: req.user,
+      user: req.user._id,
     };
+
+    /* TYPE FILTER */
+
+    if (type) {
+      query.type = type;
+    }
+
+    /* CATEGORY FILTER */
+
+    if (category) {
+      query.category = category;
+    }
 
     /* PROJECT FILTER */
 
@@ -211,22 +223,43 @@ export const getTransactions = async (req, res) => {
       query.project = project;
     }
 
+    /* SEARCH FILTER */
+
+    if (search) {
+      query.$or = [
+        {
+          receiver: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          note: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
     /* DATE FILTER */
 
     if (startDate || endDate) {
       query.date = {};
 
-      if (startDate && !isNaN(new Date(startDate))) {
+      if (startDate) {
         query.date.$gte = new Date(startDate);
       }
 
-      if (endDate && !isNaN(new Date(endDate))) {
-        query.date.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1);
+        query.date.$lt = end;
       }
     }
 
     const transactions = await Transaction.find(query)
-      .sort({ date: -1, createdAt: -1 })
+      .sort({ date: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber);
 
@@ -239,6 +272,7 @@ export const getTransactions = async (req, res) => {
       totalPages: Math.ceil(total / limitNumber),
       transactions,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -246,6 +280,7 @@ export const getTransactions = async (req, res) => {
     });
   }
 };
+
 
 // getWeeklySummary
 
@@ -273,7 +308,7 @@ export const getWeeklySummary = async (req, res) => {
     const summary = await Transaction.aggregate([
       {
         $match: {
-          user: req.user,
+          user: req.user._id,
           ...(project && { project }),
           date: {
             $gte: startOfWeek,
@@ -335,7 +370,7 @@ export const getMonthlySummary = async (req, res) => {
     const summary = await Transaction.aggregate([
       {
         $match: {
-          user: req.user,
+          user: req.user._id,
           ...(project && { project }),
           date: {
             $gte: start,
@@ -393,7 +428,7 @@ export const getYearlySummary = async (req, res) => {
     const summary = await Transaction.aggregate([
       {
         $match: {
-          user: req.user,
+          user: req.user._id,
           ...(project && { project }),
           date: {
             $gte: startOfYear,
@@ -442,7 +477,7 @@ export const getCategorySummary = async (req, res) => {
     const { startDate, endDate, project } = req.query;
 
     const matchStage = {
-      user: req.user,
+      user: req.user._id,
       type: "expense",
     };
 
@@ -525,7 +560,7 @@ export const deleteTransaction = async (req, res) => {
     const transaction =
       await Transaction.findOneAndDelete({
         _id: id,
-        user: req.user,
+        user: req.user._id,
       });
 
     if (!transaction) {
@@ -606,7 +641,7 @@ export const updateTransaction = async (req, res) => {
 
     const existingTransaction = await Transaction.findOne({
       _id: req.params.id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!existingTransaction) {
@@ -688,7 +723,7 @@ export const updateTransaction = async (req, res) => {
     const transaction = await Transaction.findOneAndUpdate(
       {
         _id: req.params.id,
-        user: req.user,
+        user: req.user._id,
       },
       updateData,
       {
@@ -716,7 +751,7 @@ export const getSummary = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     const matchStage = {
-      user: req.user,
+      user: req.user._id,
     };
 
     if (startDate || endDate) {
@@ -778,7 +813,7 @@ export const getCategoryByTypeSummary = async (req, res) => {
     const { type, startDate, endDate, project } = req.query;
 
     const match = {
-      user: req.user,
+      user: req.user._id,
     };
 
     if (type) {
@@ -858,7 +893,7 @@ export const getDashboardData = async (req, res) => {
     const result = await Transaction.aggregate([
       {
         $match: {
-          user: req.user,
+          user: req.user._id,
         },
       },
       {
@@ -936,7 +971,7 @@ export const exportTransactions = async (req, res) => {
     const { startDate, endDate, type, category, project } = req.query;
 
     const query = {
-      user: req.user,
+      user: req.user._id,
     };
 
     if (type) query.type = type;
@@ -1048,7 +1083,7 @@ export const clearTransactions = async (req, res) => {
   try {
 
     await Transaction.deleteMany({
-      user: req.user
+      user: req.user._id
     });
 
     res.status(200).json({

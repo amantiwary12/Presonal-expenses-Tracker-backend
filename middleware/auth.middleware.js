@@ -1,14 +1,16 @@
-//auth middleare 
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import User from "../models/User.model.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
+    console.log("AUTH HEADER:", authHeader);
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
-        message: "No token provided"
+        success: false,
+        message: "No token provided",
       });
     }
 
@@ -18,14 +20,29 @@ const authMiddleware = async (req, res, next) => {
       token,
       process.env.JWT_SECRET_KEY
     );
-    console.log("VERIFY SECRET:", process.env.JWT_SECRET_KEY)
 
-    req.user = decoded.id;
+    console.log("DECODED:", decoded);
+
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    req.user = user;
 
     next();
+    console.log("REQ USER:", req.user);
+
   } catch (error) {
-    return res.status(401).json({
-      message: "Invalid token"
+    console.error("AUTH ERROR:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

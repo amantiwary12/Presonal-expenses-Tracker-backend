@@ -9,6 +9,19 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    role: {
+      type: String,
+      enum: [
+        "SuperAdmin",
+        "Admin",
+        "FinanceManager",
+        "Manager",
+        "Employee",
+        "Viewer",
+      ],
+      default: "Employee",
+    },
+
     mobileNumber: {
       type: String,
       required: true,
@@ -27,4 +40,8 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-export default mongoose.model("User", userSchema);
+const User =
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);
+
+export default User;

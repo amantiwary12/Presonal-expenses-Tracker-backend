@@ -9,14 +9,14 @@ export const getNotifications = async (req, res) => {
     const limit = Number(req.query.limit) || 10;
 
     const notifications = await Notification.find({
-      user: req.user,
+      user: req.user._id,
     })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
     const total = await Notification.countDocuments({
-      user: req.user,
+      user: req.user._id,
     });
 
     res.status(200).json({
@@ -53,7 +53,7 @@ export const markNotificationAsRead = async (req, res) => {
       await Notification.findOneAndUpdate(
         {
           _id: id,
-          user: req.user,
+          user: req.user._id,
         },
         {
           isRead: true,
@@ -101,7 +101,7 @@ export const deleteNotification = async (req, res) => {
     const notification =
       await Notification.findOneAndDelete({
         _id: id,
-        user: req.user,
+        user: req.user._id,
       });
 
     if (!notification) {

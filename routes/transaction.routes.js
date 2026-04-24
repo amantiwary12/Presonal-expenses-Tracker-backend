@@ -1,11 +1,9 @@
-//transaction route
 import express from "express";
 
 import upload from "../middleware/upload.middleware.js";
-
 import authMiddleware from "../middleware/auth.middleware.js";
-
 import validate from "../middleware/validate.middleware.js";
+import allowRoles from "../middleware/allowRoles.js";
 
 import {
   transactionSchema,
@@ -34,43 +32,58 @@ const router = express.Router();
 router.post(
   "/",
   authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Employee"),
   upload.single("screenshot"),
   validate(transactionSchema),
-  createTransaction,
+  createTransaction
 );
 
 /* READ */
-router.get("/", authMiddleware, getTransactions);
+router.get(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager", "Employee"),
+  getTransactions
+);
 
 /* UPDATE */
 router.put(
   "/:id",
   authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
   upload.single("screenshot"),
   validate(updateTransactionSchema),
-  updateTransaction,
+  updateTransaction
 );
 
 /* DELETE */
-router.delete("/:id", authMiddleware, deleteTransaction);
+router.delete(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  deleteTransaction
+);
 
 /* SUMMARIES */
-router.get("/summary", authMiddleware, getSummary);
+router.get(
+  "/daily-expenses",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getDailyExpenses
+);
 
-router.get("/daily-expenses", authMiddleware, getDailyExpenses);
+router.get(
+  "/dashboard",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  getDashboardData
+);
 
-router.get("/weekly-summary", authMiddleware, getWeeklySummary);
-
-router.get("/monthly-summary", authMiddleware, getMonthlySummary);
-
-router.get("/yearly-summary", authMiddleware, getYearlySummary);
-
-router.get("/summary/category", authMiddleware, getCategorySummary);
-
-router.get("/dashboard", authMiddleware, getDashboardData);
-
-router.get("/export", authMiddleware, exportTransactions);
-
-router.delete("/clear", authMiddleware, clearTransactions);
+router.delete(
+  "/clear",
+  authMiddleware,
+  allowRoles("Admin"),
+  clearTransactions
+);
 
 export default router;

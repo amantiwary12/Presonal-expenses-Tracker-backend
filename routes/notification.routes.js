@@ -1,5 +1,6 @@
 //notification route
 import express from "express";
+import allowRoles from "../middleware/allowRoles.js";
 
 import authMiddleware from "../middleware/auth.middleware.js";
 
@@ -24,5 +25,12 @@ router.delete(
   "/:id",
   deleteNotification
 );
+
+router.delete(
+  "/:id",
+  allowRoles("Admin", "FinanceManager"),
+  deleteNotification
+);
+
 
 export default router;

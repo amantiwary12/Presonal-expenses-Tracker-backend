@@ -25,7 +25,7 @@ export const createProject = async (req, res) => {
 
     // Duplicate protection
     const existingProject = await Project.findOne({
-      user: req.user,
+      user: req.user._id,
       name: cleanName,
     });
 
@@ -38,7 +38,7 @@ export const createProject = async (req, res) => {
 
     // Create project
     const project = await Project.create({
-      user: req.user,
+      user: req.user._id,
       name: cleanName,
       description: cleanDescription,
       budget: budgetNumber,
@@ -66,7 +66,7 @@ export const getProjects = async (req, res) => {
     const limitNumber = Number(limit);
 
     const query = {
-      user: req.user,
+      user: req.user._id,
     };
 
     // Status filter
@@ -117,7 +117,7 @@ export const getProjectSummary = async (req, res) => {
 
     const project = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!project) {
@@ -131,7 +131,7 @@ export const getProjectSummary = async (req, res) => {
       {
         $match: {
           project: project._id,
-          user: req.user,
+          user: req.user._id,
         },
       },
       {
@@ -199,7 +199,7 @@ export const getProjectTransactions = async (req, res) => {
     // Verify project exists
     const project = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!project) {
@@ -215,7 +215,7 @@ export const getProjectTransactions = async (req, res) => {
 
     const query = {
       project: id,
-      user: req.user,
+      user: req.user._id,
     };
 
     if (type) {
@@ -289,7 +289,7 @@ export const updateProjectStatus = async (req, res) => {
 
     const existingProject = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!existingProject) {
@@ -317,7 +317,7 @@ export const updateProjectStatus = async (req, res) => {
     const project = await Project.findOneAndUpdate(
       {
         _id: id,
-        user: req.user,
+        user: req.user._id,
       },
       updateData,
       {
@@ -365,7 +365,7 @@ export const getProjectById = async (req, res) => {
 
     const project = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     })
       .select("name description budget status startDate completedAt createdAt")
       .lean();
@@ -404,7 +404,7 @@ export const getProjectDashboard = async (req, res) => {
     // Find project
     const project = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     }).lean();
 
     if (!project) {
@@ -419,7 +419,7 @@ export const getProjectDashboard = async (req, res) => {
       {
         $match: {
           project: project._id,
-          user: req.user,
+          user: req.user._id,
           type: "expense",
         },
       },
@@ -476,7 +476,7 @@ export const deleteProject = async (req, res) => {
     // 2) Find project
     const project = await Project.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!project) {
@@ -489,7 +489,7 @@ export const deleteProject = async (req, res) => {
     // 3) Find all related transactions
     const transactions = await Transaction.find({
       project: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     // 4) Delete screenshots from Cloudinary
@@ -511,7 +511,7 @@ export const deleteProject = async (req, res) => {
     // 5) Delete transactions
     await Transaction.deleteMany({
       project: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     // 6) Delete project

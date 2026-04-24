@@ -1,12 +1,11 @@
 //budget route
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
+import allowRoles from "../middleware/allowRoles.js";
 
 import {
   deleteBudget,
   editSpentAmount,
-  // setBudget,
-  // getBudget,
   getBudgetStatus,
   getBudgetsWithSpent,
   removeSpentAmount,
@@ -16,18 +15,55 @@ import {
 
 const router = express.Router();
 
-router.post("/", authMiddleware, setCategoryBudget);
+/* CREATE BUDGET */
+router.post(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  setCategoryBudget,
+);
 
-router.get("/", authMiddleware, getBudgetsWithSpent);
+/* GET BUDGETS */
+router.get(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getBudgetsWithSpent,
+);
 
-router.patch("/:id/spent", authMiddleware, updateSpentAmount);
+/* UPDATE SPENT */
+router.patch(
+  "/:id/spent",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  updateSpentAmount,
+);
 
-router.get("/status", authMiddleware, getBudgetStatus);
+/* EDIT SPENT */
+router.patch(
+  "/:id/spent/edit",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  editSpentAmount,
+);
 
-router.delete("/:id", authMiddleware, deleteBudget);
+/* REMOVE SPENT */
+router.patch(
+  "/:id/spent/remove",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  removeSpentAmount,
+);
 
-router.patch("/:id/spent/edit", authMiddleware, editSpentAmount);
+/* STATUS */
+router.get(
+  "/status",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getBudgetStatus,
+);
 
-router.patch("/:id/spent/remove", authMiddleware, removeSpentAmount);
+/* DELETE */
+router.delete("/:id", authMiddleware, allowRoles("Admin"), deleteBudget);
 
 export default router;

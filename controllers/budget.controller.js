@@ -24,7 +24,7 @@ export const setCategoryBudget = async (req, res) => {
 
     // Always create new budget
     const budget = await Budget.create({
-      user: req.user,
+      user: req.user._id,
       category,
       amount,
       month,
@@ -53,40 +53,52 @@ export const setCategoryBudget = async (req, res) => {
 // Get budgets with actual spent amounts
 export const getBudgetsWithSpent = async (req, res) => {
   try {
-    const userId = req.user; // FIXED
-
+    const userId = req.user;
     const { month, year } = req.query;
 
-    const filter = {
-      user: userId,
-    };
-
-    // Optional filtering
+    const filter = { user: userId };
     if (month && year) {
       filter.month = parseInt(month);
       filter.year = parseInt(year);
     }
 
-    const budgets = await Budget.find(filter)
-      .sort({ createdAt: -1 });
-
-    console.log("USER:", userId);
-    console.log("FILTER:", filter);
-    console.log("FOUND:", budgets.length);
+    const budgets = await Budget.find(filter).sort({ createdAt: -1 });
+    
+    // Calculate spent amount for each budget
+    const budgetsWithSpent = await Promise.all(budgets.map(async (budget) => {
+      const startDate = new Date(budget.year, budget.month - 1, 1);
+      const endDate = new Date(budget.year, budget.month, 0);
+      
+      const expenses = await Transaction.aggregate([
+        {
+          $match: {
+           user: req.user._id,
+            type: "expense",
+            category: budget.category,
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]);
+      
+      const spent = expenses[0]?.total || 0;
+      
+      return {
+        ...budget.toObject(),
+        spent,
+        remaining: budget.amount - spent,
+        percentageUsed: budget.amount > 0 ? (spent / budget.amount) * 100 : 0,
+      };
+    }));
 
     res.status(200).json({
       success: true,
-      count: budgets.length,
-      budgets,
+      count: budgetsWithSpent.length,
+      budgets: budgetsWithSpent,
     });
-
   } catch (error) {
     console.error("GET BUDGET ERROR:", error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -98,7 +110,7 @@ export const getBudgetStatus = async (req, res) => {
     const year = now.getFullYear();
     
     const budgets = await Budget.find({
-      user: req.user,
+      user: req.user._id,
       month,
       year
     });
@@ -114,7 +126,7 @@ export const getBudgetStatus = async (req, res) => {
       const expenses = await Transaction.aggregate([
         {
           $match: {
-            user: req.user,
+            user: req.user._id,
             type: "expense",
             category: budget.category,
             date: { $gte: startDate, $lte: endDate }
@@ -172,7 +184,7 @@ export const updateSpentAmount = async (req, res) => {
     // Find budget securely
     const budget = await Budget.findOne({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!budget) {
@@ -197,7 +209,7 @@ export const updateSpentAmount = async (req, res) => {
     const updatedBudget = await Budget.findOneAndUpdate(
       {
         _id: id,
-        user: req.user,
+        user: req.user._id,
       },
       {
         $inc: { spentAmount: spentAmount },
@@ -232,7 +244,7 @@ export const deleteBudget = async (req, res) => {
 
     const budget = await Budget.findOneAndDelete({
       _id: id,
-      user: req.user,
+      user: req.user._id,
     });
 
     if (!budget) {
@@ -271,7 +283,7 @@ export const editSpentAmount = async (req, res) => {
 
     const budget = await Budget.findOne({
       _id: id,
-      user: req.user
+      user: req.user._id
     });
 
     if (!budget) {
@@ -324,7 +336,7 @@ export const removeSpentAmount = async (req, res) => {
 
     const budget = await Budget.findOne({
       _id: id,
-      user: req.user
+      user: req.user._id
     });
 
     if (!budget) {

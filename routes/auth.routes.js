@@ -1,9 +1,15 @@
 //auth route
 import express from "express";
 
-import { registerUser, loginUser } from "../controllers/auth.controller.js";
+import {
+  registerUser,
+  loginUser,
+  getMe,
+} from "../controllers/auth.controller.js";
 
 import validate from "../middleware/validate.middleware.js";
+
+import authMiddleware from "../middleware/auth.middleware.js";
 
 import { registerSchema, loginSchema } from "../validation/auth.validation.js";
 
@@ -20,5 +26,11 @@ router.post("/register", validate(registerSchema), registerUser);
    POST /api/auth/login
 */
 router.post("/login", validate(loginSchema), loginUser);
+
+/*
+   GET CURRENT USER
+   GET /api/auth/me
+*/
+router.get("/me", authMiddleware, getMe);
 
 export default router;

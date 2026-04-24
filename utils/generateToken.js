@@ -1,14 +1,14 @@
-//gneratetoken utils
 import jwt from "jsonwebtoken";
 
-const generateToken = (id) => {
-  console.log("SIGN SECRET:", process.env.JWT_SECRET_KEY);
-
+const generateToken = (user) => {
   return jwt.sign(
-    { id },
+    {
+      id: user._id,
+      role: user.role
+    },
     process.env.JWT_SECRET_KEY,
     {
-      expiresIn: process.env.JWT_EXPIRE,
+      expiresIn: "7d"
     }
   );
 };

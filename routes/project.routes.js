@@ -1,6 +1,7 @@
-//project route 
+//project route
 import express from "express";
 import authMiddleware from "../middleware/auth.middleware.js";
+import allowRoles from "../middleware/allowRoles.js";
 
 import {
   createProject,
@@ -10,27 +11,73 @@ import {
   getProjectSummary,
   getProjectTransactions,
   updateProjectStatus,
-   deleteProject 
+  deleteProject,
 } from "../controllers/project.controller.js";
 
 const router = express.Router();
 
-router.post("/", authMiddleware, createProject);
+/* CREATE PROJECT */
+router.post(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "Manager"),
+  createProject
+);
 
-router.get("/", authMiddleware, getProjects);
+/* GET ALL PROJECTS */
+router.get(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "Manager", "Employee"),
+  getProjects
+);
 
-router.get("/:id", authMiddleware, getProjectById);
+/* GET PROJECT BY ID */
+router.get(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "Manager", "Employee"),
+  getProjectById
+);
 
-router.get("/:id/dashboard", authMiddleware, getProjectDashboard);
+/* DASHBOARD */
+router.get(
+  "/:id/dashboard",
+  authMiddleware,
+  allowRoles("Admin", "Manager"),
+  getProjectDashboard
+);
 
-router.get("/:id/summary", authMiddleware, getProjectSummary);
+/* SUMMARY */
+router.get(
+  "/:id/summary",
+  authMiddleware,
+  allowRoles("Admin", "Manager"),
+  getProjectSummary
+);
 
-router.get("/:id/transactions", authMiddleware, getProjectTransactions);
+/* PROJECT TRANSACTIONS */
+router.get(
+  "/:id/transactions",
+  authMiddleware,
+  allowRoles("Admin", "Manager"),
+  getProjectTransactions
+);
 
-router.delete("/:id", authMiddleware, deleteProject);
+/* DELETE PROJECT */
+router.delete(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "Manager"),
+  deleteProject
+);
 
-router.patch("/:id/status", authMiddleware, updateProjectStatus);
-
-
+/* UPDATE STATUS */
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  allowRoles("Manager", "Admin"),
+  updateProjectStatus
+);
 
 export default router;

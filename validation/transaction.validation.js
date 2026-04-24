@@ -4,6 +4,9 @@ import Joi from "joi";
 /* CREATE schema */
 
 export const transactionSchema = Joi.object({
+
+ 
+
   amount: Joi.number()
     .positive()
     .required(),
