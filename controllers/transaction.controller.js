@@ -8,10 +8,20 @@ import mongoose from "mongoose";
 import fs from "fs";
 import cloudinary from "../config/cloudinary.js";
 
+const buildUserFilter = (req) => {
+  const filter = {};
+
+  // Employees see only their own data
+  if (req.user.role === "Employee") {
+    filter.user = req.user._id;
+  }
+
+  // Admin / Manager / FinanceManager see all
+  return filter;
+};  
 
 export const createTransaction = async (req, res) => {
   try {
-
     const amount = Number(req.body.amount);
 
     if (!amount || amount <= 0 || isNaN(amount)) {
@@ -53,8 +63,7 @@ export const createTransaction = async (req, res) => {
       if (project.status === "completed") {
         return res.status(400).json({
           success: false,
-          message:
-            "Cannot add transaction to completed project",
+          message: "Cannot add transaction to completed project",
         });
       }
     }
@@ -88,22 +97,18 @@ export const createTransaction = async (req, res) => {
       success: true,
       transaction,
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 };
 
 export const getDailyExpenses = async (req, res) => {
   try {
-
     const { startDate, endDate, project } = req.query;
 
     if (!startDate || !endDate) {
@@ -127,7 +132,7 @@ export const getDailyExpenses = async (req, res) => {
     end.setHours(23, 59, 59, 999);
 
     const matchStage = {
-      user: new mongoose.Types.ObjectId(req.user),
+      user: new mongoose.Types.ObjectId(req.user._id),
       type: "expense",
       date: {
         $gte: start,
@@ -169,19 +174,15 @@ export const getDailyExpenses = async (req, res) => {
       count: expenses.length,
       data: expenses,
     });
-
   } catch (error) {
-
     console.error("DAILY EXPENSE ERROR:", error);
 
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 };
-
 
 // getTransactions with pagination, filtering by type, category and date range
 
@@ -201,9 +202,11 @@ export const getTransactions = async (req, res) => {
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
 
-    const query = {
-      user: req.user._id,
-    };
+    let query = {};
+
+    if (req.user.role === "Employee") {
+      query.user = req.user._id;
+    }
 
     /* TYPE FILTER */
 
@@ -272,7 +275,6 @@ export const getTransactions = async (req, res) => {
       totalPages: Math.ceil(total / limitNumber),
       transactions,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -281,21 +283,20 @@ export const getTransactions = async (req, res) => {
   }
 };
 
-
 // getWeeklySummary
 
 export const getWeeklySummary = async (req, res) => {
   try {
     const now = new Date();
-
     const { project } = req.query;
 
-    // Monday start
+    // Start of week (Monday)
     const startOfWeek = new Date(now);
 
     const day = now.getDay();
 
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const diff =
+      now.getDate() - day + (day === 0 ? -6 : 1);
 
     startOfWeek.setDate(diff);
 
@@ -303,34 +304,54 @@ export const getWeeklySummary = async (req, res) => {
 
     const endOfWeek = new Date(startOfWeek);
 
-    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    endOfWeek.setDate(
+      startOfWeek.getDate() + 7
+    );
 
-    const summary = await Transaction.aggregate([
-      {
-        $match: {
-          user: req.user._id,
-          ...(project && { project }),
-          date: {
-            $gte: startOfWeek,
-            $lt: endOfWeek,
+    // Role-based filter
+    const match = {
+      date: {
+        $gte: startOfWeek,
+        $lt: endOfWeek,
+      },
+    };
+
+    // Project filter
+    if (project) {
+      match.project = project;
+    }
+
+    // Only Employee restricted
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
+
+    const summary =
+      await Transaction.aggregate([
+        {
+          $match: match,
+        },
+        {
+          $group: {
+            _id: "$type",
+            total: {
+              $sum: "$amount",
+            },
           },
         },
-      },
-      {
-        $group: {
-          _id: "$type",
-          total: { $sum: "$amount" },
-        },
-      },
-    ]);
+      ]);
 
     let income = 0;
     let expense = 0;
 
     summary.forEach((item) => {
-      if (item._id === "income") income = item.total;
+      if (item._id === "income") {
+        income = item.total;
+      }
 
-      if (item._id === "expense") expense = item.total;
+      if (item._id === "expense") {
+        expense = item.total;
+      }
     });
 
     res.status(200).json({
@@ -340,6 +361,7 @@ export const getWeeklySummary = async (req, res) => {
       expense,
       balance: income - expense,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -356,45 +378,77 @@ export const getMonthlySummary = async (req, res) => {
     const year = Number(req.query.year);
     const { project } = req.query;
 
-    if (!month || month < 1 || month > 12 || !year || year < 2000) {
+    // Validation
+    if (
+      !month ||
+      month < 1 ||
+      month > 12 ||
+      !year ||
+      year < 2000
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid month or year",
+        message:
+          "Invalid month or year",
       });
     }
 
-    const start = new Date(year, month - 1, 1);
+    const start = new Date(
+      year,
+      month - 1,
+      1
+    );
 
-    const end = new Date(year, month, 1);
+    const end = new Date(
+      year,
+      month,
+      1
+    );
 
-    const summary = await Transaction.aggregate([
-      {
-        $match: {
-          user: req.user._id,
-          ...(project && { project }),
-          date: {
-            $gte: start,
-            $lt: end,
+    // Role-based filter
+    const match = {
+      date: {
+        $gte: start,
+        $lt: end,
+      },
+    };
+
+    // Project filter
+    if (project) {
+      match.project = project;
+    }
+
+    // Only Employee restricted
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
+
+    const summary =
+      await Transaction.aggregate([
+        {
+          $match: match,
+        },
+        {
+          $group: {
+            _id: "$type",
+            total: {
+              $sum: "$amount",
+            },
           },
         },
-      },
-      {
-        $group: {
-          _id: "$type",
-          total: {
-            $sum: "$amount",
-          },
-        },
-      },
-    ]);
+      ]);
 
     let income = 0;
     let expense = 0;
 
     summary.forEach((item) => {
-      if (item._id === "income") income = item.total;
+      if (item._id === "income") {
+        income = item.total;
+      }
 
-      if (item._id === "expense") expense = item.total;
+      if (item._id === "expense") {
+        expense = item.total;
+      }
     });
 
     res.status(200).json({
@@ -405,6 +459,7 @@ export const getMonthlySummary = async (req, res) => {
       expense,
       balance: income - expense,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -548,7 +603,6 @@ export const deleteTransaction = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -556,12 +610,14 @@ export const deleteTransaction = async (req, res) => {
       });
     }
 
-    // Find and delete transaction
-    const transaction =
-      await Transaction.findOneAndDelete({
-        _id: id,
-        user: req.user._id,
-      });
+    let query = { _id: id };
+
+    // Employee can delete only own (if ever allowed)
+    if (req.user.role === "Employee") {
+      query.user = req.user._id;
+    }
+
+    const transaction = await Transaction.findOneAndDelete(query);
 
     if (!transaction) {
       return res.status(404).json({
@@ -570,57 +626,26 @@ export const deleteTransaction = async (req, res) => {
       });
     }
 
-    // Delete screenshot from Cloudinary
-    if (
-      transaction.screenshot &&
-      transaction.screenshot.public_id
-    ) {
-      try {
-        await cloudinary.uploader.destroy(
-          transaction.screenshot.public_id
-        );
-      } catch (err) {
-        console.log(
-          "Cloudinary delete error:",
-          err.message
-        );
-      }
-    }
-
-    // Update project spending
-    if (transaction.project) {
-      try {
-        await updateProjectSpending(
-          transaction.project
-        );
-      } catch (err) {
-        console.log(
-          "Project update error:",
-          err.message
-        );
-      }
+    // delete screenshot
+    if (transaction.screenshot?.public_id) {
+      await cloudinary.uploader.destroy(
+        transaction.screenshot.public_id
+      );
     }
 
     res.status(200).json({
       success: true,
       message: "Transaction deleted successfully",
+      deletedTransactionId: id,
     });
 
   } catch (error) {
-
-    console.error(
-      "DELETE TRANSACTION ERROR:",
-      error
-    );
-
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 };
-
 // updateTransaction
 
 export const updateTransaction = async (req, res) => {
@@ -667,23 +692,22 @@ export const updateTransaction = async (req, res) => {
     };
 
     if (req.file) {
+      // Delete old screenshot from Cloudinary
+      if (
+        existingTransaction.screenshot &&
+        existingTransaction.screenshot.public_id
+      ) {
+        await cloudinary.uploader.destroy(
+          existingTransaction.screenshot.public_id,
+        );
+      }
 
-  // Delete old screenshot from Cloudinary
-  if (
-    existingTransaction.screenshot &&
-    existingTransaction.screenshot.public_id
-  ) {
-    await cloudinary.uploader.destroy(
-      existingTransaction.screenshot.public_id
-    );
-  }
-
-  // Save new screenshot
-  updateData.screenshot = {
-    url: req.file.path,
-    public_id: req.file.filename,
-  };
-}
+      // Save new screenshot
+      updateData.screenshot = {
+        url: req.file.path,
+        public_id: req.file.filename,
+      };
+    }
 
     if (updateData.type === "expense" && updateData.project) {
       const project = await Project.findById(updateData.project);
@@ -890,12 +914,17 @@ export const getCategoryByTypeSummary = async (req, res) => {
 
 export const getDashboardData = async (req, res) => {
   try {
-    const result = await Transaction.aggregate([
-      {
-        $match: {
-          user: req.user._id,
-        },
-      },
+   const match = {};
+
+// Only Employee restricted
+if (req.user.role === "Employee") {
+  match.user = req.user._id;
+}
+
+const result = await Transaction.aggregate([
+  {
+    $match: match,
+  },
       {
         $facet: {
           totals: [
@@ -1078,25 +1107,20 @@ export const exportTransactions = async (req, res) => {
   }
 };
 
-
 export const clearTransactions = async (req, res) => {
   try {
-
     await Transaction.deleteMany({
-      user: req.user._id
+      user: req.user._id,
     });
 
     res.status(200).json({
       success: true,
-      message: "All transactions cleared"
+      message: "All transactions cleared",
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
 };

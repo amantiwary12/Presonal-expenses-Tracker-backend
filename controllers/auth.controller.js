@@ -56,7 +56,7 @@ export const loginUser = async (req, res) => {
     const { mobileNumber, password } = req.body;
 
     const user = await User.findOne({
-      mobileNumber,
+       mobileNumber: mobileNumber.trim()
     });
 
     if (!user) {

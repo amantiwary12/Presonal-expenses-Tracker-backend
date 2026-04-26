@@ -1,3 +1,4 @@
+//auth.middleware 
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
@@ -36,6 +37,7 @@ const authMiddleware = async (req, res, next) => {
 
     next();
     console.log("REQ USER:", req.user);
+    console.log("USER ROLE:", req.user.role);
 
   } catch (error) {
     console.error("AUTH ERROR:", error.message);

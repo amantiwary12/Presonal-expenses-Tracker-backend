@@ -1,25 +1,31 @@
-//app .js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import morgan from "morgan";
 import dotenv from "dotenv";
 import mongoSanitize from "express-mongo-sanitize";
 
 import errorHandler from "./middleware/error.middleware.js";
 
 import authRoutes from "./routes/auth.routes.js";
+import budgetRoutes from "./routes/budget.routes.js";
+import projectRoutes from "./routes/project.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 dotenv.config();
 
 const app = express();
 
-app.use(
-  express.json()
-);
+/*
+   BODY PARSER
+*/
+app.use(express.json());
 
-// app.use(morgan("dev"));
+/*
+   SECURITY
+*/
+app.use(helmet());
 
 app.use(
   cors({
@@ -28,14 +34,39 @@ app.use(
   }),
 );
 
-app.use(helmet());
-
+/*
+   SANITIZE INPUT
+*/
 // app.use(mongoSanitize());
 
-app.use("/api/auth", authRoutes);
-
+/*
+   STATIC FILES
+*/
 app.use("/uploads", express.static("uploads"));
 
+/*
+   ROUTES
+*/
+app.use("/api/auth", authRoutes);
+app.use("/api/budget", budgetRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/users", userRoutes);
+
+/*
+   HEALTH CHECK
+*/
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API is running",
+  });
+});
+
+/*
+   ERROR HANDLER (ALWAYS LAST)
+*/
 app.use(errorHandler);
 
 export default app;

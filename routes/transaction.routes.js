@@ -1,3 +1,5 @@
+// transaction router
+
 import express from "express";
 
 import upload from "../middleware/upload.middleware.js";
@@ -9,6 +11,7 @@ import {
   transactionSchema,
   updateTransactionSchema,
 } from "../validation/transaction.validation.js";
+
 
 import {
   createTransaction,
@@ -85,5 +88,41 @@ router.delete(
   allowRoles("Admin"),
   clearTransactions
 );
+
+router.get(
+  "/weekly-summary",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getWeeklySummary
+);
+
+router.get(
+  "/monthly-summary",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getMonthlySummary
+);
+
+router.get(
+  "/yearly-summary",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getYearlySummary
+);
+
+router.get(
+  "/category-summary",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getCategorySummary
+);
+
+router.get(
+  "/summary",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  getSummary
+);
+
 
 export default router;

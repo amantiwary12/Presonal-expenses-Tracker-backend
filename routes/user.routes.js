@@ -1,21 +1,63 @@
 import express from "express";
-import { createUser } from "../controllers/user.controller.js";
+
 import authMiddleware from "../middleware/auth.middleware.js";
-import { authorizeRoles } from "../middleware/authorize.middleware.js";
+import allowRoles from "../middleware/allowRoles.js";
+
+import {
+  getAllUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  toggleUserStatus,
+  resetPassword,
+} from "../controllers/user.controller.js";
 
 const router = express.Router();
 
 /*
-   CREATE USER
-   POST /api/users
-   Only Admin can create users
+   USER MANAGEMENT ROUTES
 */
+
+router.get(
+  "/",
+  authMiddleware,
+  allowRoles("Admin", "SuperAdmin"),
+  getAllUsers
+);
 
 router.post(
   "/",
   authMiddleware,
-  authorizeRoles("Admin"),
+  allowRoles("Admin", "SuperAdmin"),
   createUser
+);
+
+router.put(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "SuperAdmin"),
+  updateUser
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "SuperAdmin"),
+  deleteUser
+);
+
+router.patch(
+  "/:id/status",
+  authMiddleware,
+  allowRoles("Admin", "SuperAdmin"),
+  toggleUserStatus
+);
+
+router.patch(
+  "/:id/reset-password",
+  authMiddleware,
+  allowRoles("Admin", "SuperAdmin"),
+  resetPassword
 );
 
 export default router;
