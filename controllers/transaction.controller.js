@@ -131,14 +131,20 @@ export const getDailyExpenses = async (req, res) => {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
+    // Build match stage based on user role
     const matchStage = {
-      user: new mongoose.Types.ObjectId(req.user._id),
       type: "expense",
       date: {
         $gte: start,
         $lte: end,
       },
     };
+
+    // Admin/Manager see all users, Employee sees only their own
+    if (req.user.role === "Employee") {
+      matchStage.user = new mongoose.Types.ObjectId(req.user._id);
+    }
+    // For Admin/Manager - no user filter (shows all users)
 
     if (project) {
       matchStage.project = project;
@@ -176,7 +182,6 @@ export const getDailyExpenses = async (req, res) => {
     });
   } catch (error) {
     console.error("DAILY EXPENSE ERROR:", error);
-
     res.status(500).json({
       success: false,
       message: error.message,
@@ -204,56 +209,26 @@ export const getTransactions = async (req, res) => {
 
     let query = {};
 
+    // Role-based filter - Admin sees all, Employee sees only own
     if (req.user.role === "Employee") {
       query.user = req.user._id;
     }
+    // For Admin/Manager - no user filter (shows all users)
 
-    /* TYPE FILTER */
-
-    if (type) {
-      query.type = type;
-    }
-
-    /* CATEGORY FILTER */
-
-    if (category) {
-      query.category = category;
-    }
-
-    /* PROJECT FILTER */
-
-    if (project) {
-      query.project = project;
-    }
-
-    /* SEARCH FILTER */
+    if (type) query.type = type;
+    if (category) query.category = category;
+    if (project) query.project = project;
 
     if (search) {
       query.$or = [
-        {
-          receiver: {
-            $regex: search,
-            $options: "i",
-          },
-        },
-        {
-          note: {
-            $regex: search,
-            $options: "i",
-          },
-        },
+        { receiver: { $regex: search, $options: "i" } },
+        { note: { $regex: search, $options: "i" } },
       ];
     }
 
-    /* DATE FILTER */
-
     if (startDate || endDate) {
       query.date = {};
-
-      if (startDate) {
-        query.date.$gte = new Date(startDate);
-      }
-
+      if (startDate) query.date.$gte = new Date(startDate);
       if (endDate) {
         const end = new Date(endDate);
         end.setDate(end.getDate() + 1);
@@ -262,6 +237,7 @@ export const getTransactions = async (req, res) => {
     }
 
     const transactions = await Transaction.find(query)
+      .populate('user', 'name mobileNumber role')
       .sort({ date: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber);
@@ -292,23 +268,15 @@ export const getWeeklySummary = async (req, res) => {
 
     // Start of week (Monday)
     const startOfWeek = new Date(now);
-
     const day = now.getDay();
-
-    const diff =
-      now.getDate() - day + (day === 0 ? -6 : 1);
-
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
-
     startOfWeek.setHours(0, 0, 0, 0);
 
     const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-    endOfWeek.setDate(
-      startOfWeek.getDate() + 7
-    );
-
-    // Role-based filter
+    // Build match stage based on user role
     const match = {
       date: {
         $gte: startOfWeek,
@@ -321,25 +289,25 @@ export const getWeeklySummary = async (req, res) => {
       match.project = project;
     }
 
-    // Only Employee restricted
+    // Role-based filter - Admin sees all, Employee sees only own
     if (req.user.role === "Employee") {
       match.user = req.user._id;
     }
+    // For Admin/Manager - no user filter (shows all users)
 
-    const summary =
-      await Transaction.aggregate([
-        {
-          $match: match,
-        },
-        {
-          $group: {
-            _id: "$type",
-            total: {
-              $sum: "$amount",
-            },
+    const summary = await Transaction.aggregate([
+      {
+        $match: match,
+      },
+      {
+        $group: {
+          _id: "$type",
+          total: {
+            $sum: "$amount",
           },
         },
-      ]);
+      },
+    ]);
 
     let income = 0;
     let expense = 0;
@@ -348,7 +316,6 @@ export const getWeeklySummary = async (req, res) => {
       if (item._id === "income") {
         income = item.total;
       }
-
       if (item._id === "expense") {
         expense = item.total;
       }
@@ -361,7 +328,6 @@ export const getWeeklySummary = async (req, res) => {
       expense,
       balance: income - expense,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -378,34 +344,17 @@ export const getMonthlySummary = async (req, res) => {
     const year = Number(req.query.year);
     const { project } = req.query;
 
-    // Validation
-    if (
-      !month ||
-      month < 1 ||
-      month > 12 ||
-      !year ||
-      year < 2000
-    ) {
+    if (!month || month < 1 || month > 12 || !year || year < 2000) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid month or year",
+        message: "Invalid month or year",
       });
     }
 
-    const start = new Date(
-      year,
-      month - 1,
-      1
-    );
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
 
-    const end = new Date(
-      year,
-      month,
-      1
-    );
-
-    // Role-based filter
+    // Build match stage based on user role
     const match = {
       date: {
         $gte: start,
@@ -413,42 +362,35 @@ export const getMonthlySummary = async (req, res) => {
       },
     };
 
-    // Project filter
     if (project) {
       match.project = project;
     }
 
-    // Only Employee restricted
+    // Role-based filter - Admin sees all, Employee sees only own
     if (req.user.role === "Employee") {
       match.user = req.user._id;
     }
 
-    const summary =
-      await Transaction.aggregate([
-        {
-          $match: match,
-        },
-        {
-          $group: {
-            _id: "$type",
-            total: {
-              $sum: "$amount",
-            },
+    const summary = await Transaction.aggregate([
+      {
+        $match: match,
+      },
+      {
+        $group: {
+          _id: "$type",
+          total: {
+            $sum: "$amount",
           },
         },
-      ]);
+      },
+    ]);
 
     let income = 0;
     let expense = 0;
 
     summary.forEach((item) => {
-      if (item._id === "income") {
-        income = item.total;
-      }
-
-      if (item._id === "expense") {
-        expense = item.total;
-      }
+      if (item._id === "income") income = item.total;
+      if (item._id === "expense") expense = item.total;
     });
 
     res.status(200).json({
@@ -459,7 +401,6 @@ export const getMonthlySummary = async (req, res) => {
       expense,
       balance: income - expense,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
