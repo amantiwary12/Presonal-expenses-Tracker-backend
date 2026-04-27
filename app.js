@@ -1,3 +1,4 @@
+//app.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -12,6 +13,7 @@ import projectRoutes from "./routes/project.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import importRoutes from "./routes/import.routes.js";
 
 dotenv.config();
 
@@ -53,6 +55,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/import", importRoutes);
 
 /*
    HEALTH CHECK

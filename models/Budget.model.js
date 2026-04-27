@@ -1,3 +1,4 @@
+//budget model
 import mongoose from "mongoose";
 
 const budgetSchema = new mongoose.Schema({
@@ -48,4 +49,8 @@ budgetSchema.index(
   { unique: true }
 );
 
-export default mongoose.model("Budget", budgetSchema);
+const Budget =
+  mongoose.models.Budget ||
+  mongoose.model("Budget", budgetSchema);
+
+export default Budget;
