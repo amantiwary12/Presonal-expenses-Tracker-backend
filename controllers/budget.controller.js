@@ -53,10 +53,10 @@ export const setCategoryBudget = async (req, res) => {
 // Get budgets with actual spent amounts
 export const getBudgetsWithSpent = async (req, res) => {
   try {
-    const userId = req.user;
+    const userId = req.user._id;  // Use the logged-in user's ID
     const { month, year } = req.query;
 
-    const filter = { user: userId };
+    const filter = { user: userId };  // Employees only see their own budgets
     if (month && year) {
       filter.month = parseInt(month);
       filter.year = parseInt(year);
@@ -72,7 +72,7 @@ export const getBudgetsWithSpent = async (req, res) => {
       const expenses = await Transaction.aggregate([
         {
           $match: {
-           user: req.user._id,
+            user: req.user._id,  // Only current user's transactions
             type: "expense",
             category: budget.category,
             date: { $gte: startDate, $lte: endDate }
@@ -110,7 +110,7 @@ export const getBudgetStatus = async (req, res) => {
     const year = now.getFullYear();
     
     const budgets = await Budget.find({
-      user: req.user._id,
+      user: req.user._id,  // Only current user's budgets
       month,
       year
     });
@@ -126,7 +126,7 @@ export const getBudgetStatus = async (req, res) => {
       const expenses = await Transaction.aggregate([
         {
           $match: {
-            user: req.user._id,
+            user: req.user._id,  // Only current user's transactions
             type: "expense",
             category: budget.category,
             date: { $gte: startDate, $lte: endDate }
