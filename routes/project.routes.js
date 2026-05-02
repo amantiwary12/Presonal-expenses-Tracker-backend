@@ -12,24 +12,20 @@ import {
   getProjectTransactions,
   updateProjectStatus,
   deleteProject,
+  getProjectWithProgress,
 } from "../controllers/project.controller.js";
 
 const router = express.Router();
 
 /* CREATE PROJECT */
-router.post(
-  "/",
-  authMiddleware,
-  allowRoles("Admin", "Manager"),
-  createProject
-);
+router.post("/", authMiddleware, allowRoles("Admin", "Manager"), createProject);
 
 /* GET ALL PROJECTS */
 router.get(
   "/",
   authMiddleware,
   allowRoles("Admin", "Manager", "Employee"),
-  getProjects
+  getProjects,
 );
 
 /* GET PROJECT BY ID */
@@ -37,7 +33,7 @@ router.get(
   "/:id",
   authMiddleware,
   allowRoles("Admin", "Manager", "Employee"),
-  getProjectById
+  getProjectById,
 );
 
 /* DASHBOARD */
@@ -45,7 +41,7 @@ router.get(
   "/:id/dashboard",
   authMiddleware,
   allowRoles("Admin", "Manager"),
-  getProjectDashboard
+  getProjectDashboard,
 );
 
 /* SUMMARY */
@@ -53,7 +49,7 @@ router.get(
   "/:id/summary",
   authMiddleware,
   allowRoles("Admin", "Manager"),
-  getProjectSummary
+  getProjectSummary,
 );
 
 /* PROJECT TRANSACTIONS */
@@ -61,7 +57,7 @@ router.get(
   "/:id/transactions",
   authMiddleware,
   allowRoles("Admin", "Manager"),
-  getProjectTransactions
+  getProjectTransactions,
 );
 
 /* DELETE PROJECT */
@@ -69,7 +65,7 @@ router.delete(
   "/:id",
   authMiddleware,
   allowRoles("Admin", "Manager"),
-  deleteProject
+  deleteProject,
 );
 
 /* UPDATE STATUS */
@@ -77,7 +73,9 @@ router.patch(
   "/:id/status",
   authMiddleware,
   allowRoles("Manager", "Admin"),
-  updateProjectStatus
+  updateProjectStatus,
 );
+
+router.get("/:id/progress", authMiddleware, getProjectWithProgress);
 
 export default router;

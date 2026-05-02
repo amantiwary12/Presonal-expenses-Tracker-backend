@@ -18,7 +18,7 @@ const buildUserFilter = (req) => {
 
   // Admin / Manager / FinanceManager see all
   return filter;
-};  
+};
 
 export const createTransaction = async (req, res) => {
   try {
@@ -149,6 +149,7 @@ export const getDailyExpenses = async (req, res) => {
     if (project) {
       matchStage.project = project;
     }
+    console.log("Daily expenses match stage:", JSON.stringify(matchStage, null, 2));
 
     const expenses = await Transaction.aggregate([
       {
@@ -174,6 +175,8 @@ export const getDailyExpenses = async (req, res) => {
         },
       },
     ]);
+    console.log("Daily expenses result:", expenses);
+
 
     res.status(200).json({
       success: true,
@@ -237,7 +240,7 @@ export const getTransactions = async (req, res) => {
     }
 
     const transactions = await Transaction.find(query)
-      .populate('user', 'name mobileNumber role')
+      .populate("user", "name mobileNumber role")
       .sort({ date: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber);
@@ -569,9 +572,7 @@ export const deleteTransaction = async (req, res) => {
 
     // delete screenshot
     if (transaction.screenshot?.public_id) {
-      await cloudinary.uploader.destroy(
-        transaction.screenshot.public_id
-      );
+      await cloudinary.uploader.destroy(transaction.screenshot.public_id);
     }
 
     res.status(200).json({
@@ -579,7 +580,6 @@ export const deleteTransaction = async (req, res) => {
       message: "Transaction deleted successfully",
       deletedTransactionId: id,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -855,17 +855,17 @@ export const getCategoryByTypeSummary = async (req, res) => {
 
 export const getDashboardData = async (req, res) => {
   try {
-   const match = {};
+    const match = {};
 
-// Only Employee restricted
-if (req.user.role === "Employee") {
-  match.user = req.user._id;
-}
+    // Only Employee restricted
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
 
-const result = await Transaction.aggregate([
-  {
-    $match: match,
-  },
+    const result = await Transaction.aggregate([
+      {
+        $match: match,
+      },
       {
         $facet: {
           totals: [

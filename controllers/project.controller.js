@@ -529,3 +529,126 @@ export const deleteProject = async (req, res) => {
     });
   }
 };
+
+
+// Get project with progress and transaction summary
+export const getProjectWithProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID",
+      });
+    }
+
+    const project = await Project.findOne({
+      _id: id,
+      user: userId,
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    const summary = await Transaction.aggregate([
+      {
+        $match: {
+          project: new mongoose.Types.ObjectId(id),
+          user: new mongoose.Types.ObjectId(userId),
+          isDeleted: false,
+        },
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          totalIncome: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", "income"] },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          totalExpense: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", "expense"] },
+                "$amount",
+                0,
+              ],
+            },
+          },
+
+          transactionCount: {
+            $sum: 1,
+          },
+        },
+      },
+    ]);
+
+    const totalIncome =
+      summary[0]?.totalIncome || 0;
+
+    const totalExpense =
+      summary[0]?.totalExpense || 0;
+
+    const netProfit =
+      totalIncome - totalExpense;
+
+    const progress =
+      project.budget > 0
+        ? (totalExpense /
+            project.budget) *
+          100
+        : 0;
+
+    let statusLevel = "good";
+
+    if (progress >= 100)
+      statusLevel = "critical";
+    else if (progress >= 80)
+      statusLevel = "warning";
+    else if (progress >= 50)
+      statusLevel = "moderate";
+
+    res.status(200).json({
+      success: true,
+
+      project: {
+        ...project.toObject(),
+
+        totalIncome,
+        totalExpense,
+        netProfit,
+
+        progress: Math.min(
+          progress,
+          100
+        ),
+
+        statusLevel,
+
+        transactionCount:
+          summary[0]
+            ?.transactionCount || 0,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
