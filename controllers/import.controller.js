@@ -1,5 +1,5 @@
 import XLSX from "xlsx";
-import Transaction from "../models/Transaction.model.js";
+import Transaction from "../models/transaction.model.js";
 import Project from "../models/Project.model.js";
 
 /*
