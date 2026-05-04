@@ -9,6 +9,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    company: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Company",
+  required: true,
+},
+
     role: {
       type: String,
       enum: [

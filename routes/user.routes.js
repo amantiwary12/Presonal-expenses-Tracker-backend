@@ -18,46 +18,36 @@ const router = express.Router();
    USER MANAGEMENT ROUTES
 */
 
-router.get(
-  "/",
-  authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
-  getAllUsers
-);
+router.get("/", authMiddleware, allowRoles("Admin", "SuperAdmin"), getAllUsers);
 
-router.post(
-  "/",
-  authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
-  createUser
-);
+router.post("/", authMiddleware, allowRoles("Admin", "SuperAdmin"), createUser);
 
 router.put(
   "/:id",
   authMiddleware,
   allowRoles("Admin", "SuperAdmin"),
-  updateUser
+  updateUser,
 );
 
 router.delete(
   "/:id",
   authMiddleware,
   allowRoles("Admin", "SuperAdmin"),
-  deleteUser
+  deleteUser,
 );
 
 router.patch(
   "/:id/status",
   authMiddleware,
   allowRoles("Admin", "SuperAdmin"),
-  toggleUserStatus
+  toggleUserStatus,
 );
 
 router.patch(
   "/:id/reset-password",
   authMiddleware,
   allowRoles("Admin", "SuperAdmin"),
-  resetPassword
+  resetPassword,
 );
 
 export default router;

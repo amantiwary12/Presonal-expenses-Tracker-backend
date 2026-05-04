@@ -1,23 +1,24 @@
-//auth validation
+// backend/validation/auth.validation.js
 import Joi from "joi";
 
 export const registerSchema = Joi.object({
+  name: Joi.string()
+    .min(2)
+    .max(50)
+    .required(),
+
   mobileNumber: Joi.string()
     .pattern(/^[0-9]{10}$/)
-    .required()
-    .messages({
-      "string.pattern.base":
-        "Mobile number must be 10 digits"
-    }),
+    .required(),
 
   password: Joi.string()
     .min(6)
     .max(20)
     .required(),
 
-  name: Joi.string()
+  companyName: Joi.string()  // ✅ MUST be here
     .min(2)
-    .max(50)
+    .max(100)
     .required()
 });
 

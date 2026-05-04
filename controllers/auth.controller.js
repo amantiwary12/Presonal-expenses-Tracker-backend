@@ -2,14 +2,13 @@
 import User from "../models/user.model.js";
 import generateToken from "../utils/generateToken.js";
 import { hashPassword, comparePassword } from "../utils/hashPassword.js";
+import Company from "../models/Company.model.js";
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, mobileNumber, password } = req.body;
+    const { name, mobileNumber, password,  companyName} = req.body;
 
-    const existingUser = await User.findOne({
-      mobileNumber,
-    });
+    const existingUser = await User.findOne({ mobileNumber });
 
     if (existingUser) {
       return res.status(400).json({
@@ -20,29 +19,27 @@ export const registerUser = async (req, res) => {
 
     const hashedPassword = await hashPassword(password);
 
+    // ✅ CREATE NEW COMPANY
+    const company = await Company.create({
+       name: companyName || `${name}'s Company`,
+    });
+
+    // ✅ CREATE USER AS ADMIN
     const user = await User.create({
       name,
       mobileNumber,
       password: hashedPassword,
-
-      /*
-         FORCE DEFAULT ROLE
-      */
-
-      role: "Employee",
+      role: "Admin",              // ✅ FIXED
+      company: company._id,       // ✅ LINKED
     });
 
     res.status(201).json({
       success: true,
       message: "User registered successfully",
       token: generateToken(user),
-      user: {
-        _id: user._id,
-        name: user.name,
-        mobileNumber: user.mobileNumber,
-        role: user.role,
-      },
+      user,
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -56,7 +53,7 @@ export const loginUser = async (req, res) => {
     const { mobileNumber, password } = req.body;
 
     const user = await User.findOne({
-       mobileNumber: mobileNumber.trim()
+      mobileNumber: mobileNumber.trim(),
     });
 
     if (!user) {
@@ -84,6 +81,7 @@ export const loginUser = async (req, res) => {
         name: user.name,
         mobileNumber: user.mobileNumber,
         role: user.role,
+        company: user.company ,  // ✅ ADD THIS
       },
     });
   } catch (error) {
@@ -94,7 +92,6 @@ export const loginUser = async (req, res) => {
   }
 };
 
-
 export const getMe = async (req, res) => {
   try {
     console.log("INSIDE getMe controller");
@@ -103,7 +100,6 @@ export const getMe = async (req, res) => {
       success: true,
       user: req.user,
     });
-
   } catch (error) {
     console.error("GET ME ERROR:", error);
 
@@ -113,6 +109,3 @@ export const getMe = async (req, res) => {
     });
   }
 };
-
-
-
