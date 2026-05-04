@@ -59,6 +59,11 @@ const transactionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    company: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Company",
+  required: true,
+},
   },
   { timestamps: true },
 );

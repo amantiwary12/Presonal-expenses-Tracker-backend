@@ -35,9 +35,9 @@ const authMiddleware = async (req, res, next) => {
 
     req.user = user;
 
-    next();
     console.log("REQ USER:", req.user);
     console.log("USER ROLE:", req.user.role);
+    next();
 
   } catch (error) {
     console.error("AUTH ERROR:", error.message);

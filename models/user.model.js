@@ -10,10 +10,10 @@ const userSchema = new mongoose.Schema(
     },
 
     company: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Company",
-  required: true,
-},
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
 
     role: {
       type: String,
@@ -40,9 +40,9 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
-     isActive: {
+    isActive: {
       type: Boolean,
-      default: true
+      default: true,
     },
   },
   {
@@ -50,8 +50,6 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-const User =
-  mongoose.models.User ||
-  mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

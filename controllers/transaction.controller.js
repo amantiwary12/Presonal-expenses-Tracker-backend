@@ -8,6 +8,14 @@ import mongoose from "mongoose";
 import fs from "fs";
 import cloudinary from "../config/cloudinary.js";
 
+
+const companyFilter = (req) => {
+  return {
+    company: req.user.company,
+  };
+};
+
+
 const buildUserFilter = (req) => {
   const filter = {};
 
@@ -70,6 +78,7 @@ export const createTransaction = async (req, res) => {
 
     const transaction = await Transaction.create({
       user: req.user._id,
+      company: req.user.company,
       amount,
       receiver: req.body.receiver,
       date: req.body.date || new Date(),
@@ -133,6 +142,7 @@ export const getDailyExpenses = async (req, res) => {
 
     // Build match stage based on user role
     const matchStage = {
+      company: req.user.company, // ✅ ADD THIS LINE
       type: "expense",
       date: {
         $gte: start,
@@ -149,7 +159,10 @@ export const getDailyExpenses = async (req, res) => {
     if (project) {
       matchStage.project = project;
     }
-    console.log("Daily expenses match stage:", JSON.stringify(matchStage, null, 2));
+    console.log(
+      "Daily expenses match stage:",
+      JSON.stringify(matchStage, null, 2),
+    );
 
     const expenses = await Transaction.aggregate([
       {
@@ -176,7 +189,6 @@ export const getDailyExpenses = async (req, res) => {
       },
     ]);
     console.log("Daily expenses result:", expenses);
-
 
     res.status(200).json({
       success: true,
@@ -210,13 +222,13 @@ export const getTransactions = async (req, res) => {
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
 
-    let query = {};
+    let query = {
+      ...companyFilter(req), // ✅ MAIN FIX
+    };
 
-    // Role-based filter - Admin sees all, Employee sees only own
     if (req.user.role === "Employee") {
       query.user = req.user._id;
     }
-    // For Admin/Manager - no user filter (shows all users)
 
     if (type) query.type = type;
     if (category) query.category = category;
@@ -281,6 +293,7 @@ export const getWeeklySummary = async (req, res) => {
 
     // Build match stage based on user role
     const match = {
+      ...companyFilter(req),
       date: {
         $gte: startOfWeek,
         $lt: endOfWeek,
@@ -359,6 +372,7 @@ export const getMonthlySummary = async (req, res) => {
 
     // Build match stage based on user role
     const match = {
+      ...companyFilter(req),
       date: {
         $gte: start,
         $lt: end,
@@ -417,30 +431,34 @@ export const getMonthlySummary = async (req, res) => {
 export const getYearlySummary = async (req, res) => {
   try {
     const year = Number(req.query.year) || new Date().getFullYear();
-
     const { project } = req.query;
 
     const startOfYear = new Date(year, 0, 1);
-
     const endOfYear = new Date(year + 1, 0, 1);
 
-    const summary = await Transaction.aggregate([
-      {
-        $match: {
-          user: req.user._id,
-          ...(project && { project }),
-          date: {
-            $gte: startOfYear,
-            $lt: endOfYear,
-          },
-        },
+    const match = {
+      company: req.user.company, // ✅ always filter company
+      date: {
+        $gte: startOfYear,
+        $lt: endOfYear,
       },
+    };
+
+    if (project) {
+      match.project = project;
+    }
+
+    // ✅ ONLY restrict employee
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
+
+    const summary = await Transaction.aggregate([
+      { $match: match },
       {
         $group: {
           _id: "$type",
-          total: {
-            $sum: "$amount",
-          },
+          total: { $sum: "$amount" },
         },
       },
     ]);
@@ -450,7 +468,6 @@ export const getYearlySummary = async (req, res) => {
 
     summary.forEach((item) => {
       if (item._id === "income") income = item.total;
-
       if (item._id === "expense") expense = item.total;
     });
 
@@ -476,9 +493,10 @@ export const getCategorySummary = async (req, res) => {
     const { startDate, endDate, project } = req.query;
 
     const matchStage = {
-      user: req.user._id,
-      type: "expense",
-    };
+  company: req.user.company, // ✅ ADD
+  user: req.user._id,
+  type: "expense",
+};
 
     if (project) {
       matchStage.project = project;
@@ -554,7 +572,10 @@ export const deleteTransaction = async (req, res) => {
       });
     }
 
-    let query = { _id: id };
+    let query = {
+      _id: id,
+      company: req.user.company, // ✅ ADD THIS
+    };
 
     // Employee can delete only own (if ever allowed)
     if (req.user.role === "Employee") {
@@ -591,13 +612,17 @@ export const deleteTransaction = async (req, res) => {
 
 export const updateTransaction = async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const { id } = req.params;
+
+    // ✅ Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid transaction ID",
       });
     }
 
+    // ✅ Check empty body
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
@@ -605,10 +630,18 @@ export const updateTransaction = async (req, res) => {
       });
     }
 
-    const existingTransaction = await Transaction.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    // ✅ Build secure query (company + role based)
+    let query = {
+      _id: id,
+      company: req.user.company,
+    };
+
+    if (req.user.role === "Employee") {
+      query.user = req.user._id;
+    }
+
+    // ✅ Find transaction
+    const existingTransaction = await Transaction.findOne(query);
 
     if (!existingTransaction) {
       return res.status(404).json({
@@ -617,6 +650,7 @@ export const updateTransaction = async (req, res) => {
       });
     }
 
+    // ✅ Prevent update if project completed
     if (existingTransaction.project) {
       const project = await Project.findById(existingTransaction.project);
 
@@ -632,49 +666,56 @@ export const updateTransaction = async (req, res) => {
       ...req.body,
     };
 
+    // ✅ Handle screenshot update
     if (req.file) {
-      // Delete old screenshot from Cloudinary
       if (
         existingTransaction.screenshot &&
         existingTransaction.screenshot.public_id
       ) {
         await cloudinary.uploader.destroy(
-          existingTransaction.screenshot.public_id,
+          existingTransaction.screenshot.public_id
         );
       }
 
-      // Save new screenshot
       updateData.screenshot = {
         url: req.file.path,
         public_id: req.file.filename,
       };
     }
 
+    // ✅ Budget validation (ONLY for expense + project)
     if (updateData.type === "expense" && updateData.project) {
-      const project = await Project.findById(updateData.project);
+      const project = await Project.findOne({
+  _id: updateData.project,
+  company: req.user.company,
+});
 
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          message: "Project not found",
+        });
+      }
+
+      // 🔒 FIX: company filter added
       const expenses = await Transaction.aggregate([
         {
           $match: {
+            company: req.user.company,
             project: project._id,
             type: "expense",
-            _id: {
-              $ne: existingTransaction._id,
-            },
+            _id: { $ne: existingTransaction._id },
           },
         },
         {
           $group: {
             _id: null,
-            total: {
-              $sum: "$amount",
-            },
+            total: { $sum: "$amount" },
           },
         },
       ]);
 
       const totalSpent = expenses[0]?.total || 0;
-
       const newAmount = updateData.amount ?? existingTransaction.amount;
 
       if (totalSpent + newAmount > project.budget) {
@@ -685,16 +726,14 @@ export const updateTransaction = async (req, res) => {
       }
     }
 
+    // ✅ FINAL UPDATE (use SAME query)
     const transaction = await Transaction.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        user: req.user._id,
-      },
+      query,
       updateData,
       {
         new: true,
         runValidators: true,
-      },
+      }
     );
 
     res.status(200).json({
@@ -716,8 +755,9 @@ export const getSummary = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     const matchStage = {
-      user: req.user._id,
-    };
+  company: req.user.company, // ✅ ADD
+  user: req.user._id,
+};
 
     if (startDate || endDate) {
       matchStage.date = {};
@@ -778,8 +818,9 @@ export const getCategoryByTypeSummary = async (req, res) => {
     const { type, startDate, endDate, project } = req.query;
 
     const match = {
-      user: req.user._id,
-    };
+  company: req.user.company, // ✅ ADD
+  user: req.user._id,
+};
 
     if (type) {
       const allowedTypes = ["income", "expense"];
@@ -855,7 +896,9 @@ export const getCategoryByTypeSummary = async (req, res) => {
 
 export const getDashboardData = async (req, res) => {
   try {
-    const match = {};
+    const match = {
+      ...companyFilter(req), // ✅ FIX
+    };
 
     // Only Employee restricted
     if (req.user.role === "Employee") {
@@ -882,8 +925,9 @@ export const getDashboardData = async (req, res) => {
           categorySummary: [
             {
               $match: {
-                type: "expense",
-              },
+      ...match,
+      type: "expense",
+    },
             },
             {
               $addFields: {
@@ -941,8 +985,12 @@ export const exportTransactions = async (req, res) => {
     const { startDate, endDate, type, category, project } = req.query;
 
     const query = {
-      user: req.user._id,
-    };
+  company: req.user.company, // ✅ ADD
+};
+
+if (req.user.role === "Employee") {
+  query.user = req.user._id;
+}
 
     if (type) query.type = type;
     if (category) query.category = category;
@@ -1051,6 +1099,7 @@ export const exportTransactions = async (req, res) => {
 export const clearTransactions = async (req, res) => {
   try {
     await Transaction.deleteMany({
+      company: req.user.company, // ✅ FIX,
       user: req.user._id,
     });
 
