@@ -60,19 +60,16 @@ const transactionSchema = new mongoose.Schema(
       default: false,
     },
     company: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Company",
-  required: true,
-},
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
   },
   { timestamps: true },
 );
 
 const Transaction =
   mongoose.models.Transaction ||
-  mongoose.model(
-    "Transaction",
-    transactionSchema
-  );
+  mongoose.model("Transaction", transactionSchema);
 
 export default Transaction;

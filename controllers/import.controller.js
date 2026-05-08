@@ -1,3 +1,4 @@
+// controllers/import.controller.js
 import XLSX from "xlsx";
 import Transaction from "../models/transaction.model.js";
 import Project from "../models/Project.model.js";
@@ -40,6 +41,16 @@ export const importProjectData = async (req, res) => {
     const userId = req.user.id;
     const { projectId } = req.body;
 
+    // ✅ GET COMPANY ID FIRST (GLOBAL)
+    const companyId = req.user.company?._id || req.user.company;
+
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "User has no company assigned",
+      });
+    }
+
     // 1. VALIDATIONS
     if (!req.file) {
       return res.status(400).json({
@@ -64,16 +75,21 @@ export const importProjectData = async (req, res) => {
       });
     }
 
+    // ✅ CHECK COMPANY MATCH (IMPORTANT - BEFORE PROCESSING)
+    if (!project.company || project.company.toString() !== companyId.toString()) {
+  return res.status(403).json({
+    success: false,
+    message: "Project does not belong to your company",
+  });
+}
+
     // 2. READ FILE
     const workbook = XLSX.read(req.file.buffer, {
       type: "buffer",
     });
 
-    const sheet =
-      workbook.Sheets[workbook.SheetNames[0]];
-
-    const rows =
-      XLSX.utils.sheet_to_json(sheet);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
 
     if (!rows.length) {
       return res.status(400).json({
@@ -89,39 +105,29 @@ export const importProjectData = async (req, res) => {
     const bulkData = [];
 
     for (const row of rows) {
-      // FLEXIBLE MAPPING (handles different CSV formats)
-      const amount = Number(
-        row.Amount || row.amount
-      );
-
-      const type = (
-        row.Type || row.type || ""
-      ).toLowerCase();
+      const amount = Number(row.Amount || row.amount);
+      const type = (row.Type || row.type || "").toLowerCase();
 
       if (!amount || !type) {
         skipped++;
         continue;
       }
 
-      const date = parseDate(
-        row.Date || row.date
-      );
+      const date = parseDate(row.Date || row.date);
 
-      // Normalize date for duplicate check
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
 
       const end = new Date(date);
       end.setHours(23, 59, 59, 999);
 
-      const existing =
-        await Transaction.findOne({
-          project: projectId,
-          amount,
-          receiver:
-            row.Receiver || row.receiver || "",
-          date: { $gte: start, $lte: end },
-        });
+      const existing = await Transaction.findOne({
+        project: projectId,
+         company: companyId,
+        amount,
+        receiver: row.Receiver || row.receiver || "",
+        date: { $gte: start, $lte: end },
+      });
 
       if (existing) {
         skipped++;
@@ -133,25 +139,17 @@ export const importProjectData = async (req, res) => {
         project: projectId,
         amount,
         type,
-        category:
-          row.Category ||
-          row.category ||
-          "General",
-        receiver:
-          row.Receiver ||
-          row.receiver ||
-          "",
-        note:
-          row.Note ||
-          row.note ||
-          "",
+        category: row.Category || row.category || "General",
+        receiver: row.Receiver || row.receiver || "",
+        note: row.Note || row.note || "",
         date,
+        company: companyId, // ✅ CORRECT
       });
 
       inserted++;
     }
 
-    // 4. BULK INSERT (FAST)
+    // 4. BULK INSERT
     if (bulkData.length > 0) {
       await Transaction.insertMany(bulkData);
     }
@@ -164,6 +162,7 @@ export const importProjectData = async (req, res) => {
       skipped,
       totalRows: rows.length,
     });
+
   } catch (error) {
     console.error("IMPORT ERROR:", error);
 

@@ -1,4 +1,4 @@
-//project model.js 
+//project model.js
 import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
@@ -34,12 +34,16 @@ const projectSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
     },
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
   },
   { timestamps: true },
 );
 
 const Project =
-  mongoose.models.Project ||
-  mongoose.model("Project", projectSchema);
+  mongoose.models.Project || mongoose.model("Project", projectSchema);
 
 export default Project;

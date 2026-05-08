@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema(
         "Manager",
         "Employee",
         "Viewer",
+        "HR",
       ],
       default: "Employee",
     },
