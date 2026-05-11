@@ -45,7 +45,7 @@ router.post(
 router.get(
   "/",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager", "Employee"),
+  allowRoles("Admin", "FinanceManager", "Manager", "Employee", "HR"),
   getTransactions
 );
 
@@ -71,14 +71,14 @@ router.delete(
 router.get(
   "/daily-expenses",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getDailyExpenses
 );
 
 router.get(
   "/dashboard",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager"),
+  allowRoles("Admin", "FinanceManager", "HR"),
   getDashboardData
 );
 
@@ -92,37 +92,37 @@ router.delete(
 router.get(
   "/weekly-summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getWeeklySummary
 );
 
 router.get(
   "/monthly-summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getMonthlySummary
 );
 
 router.get(
   "/yearly-summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getYearlySummary
 );
 
 router.get(
   "/category-summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getCategorySummary
 );
 
 router.get(
   "/summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
   getSummary
 );
 
 
-export default router;                                              
+export default router;

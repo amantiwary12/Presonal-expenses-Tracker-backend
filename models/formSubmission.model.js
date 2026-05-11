@@ -34,9 +34,17 @@ const submissionSchema = new mongoose.Schema(
     },
 
     approvedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+},
+
+approvedAt: {
+  type: Date,
+},
+
+rejectionReason: {
+  type: String,
+},
   },
   { timestamps: true }
 );

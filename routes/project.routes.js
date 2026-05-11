@@ -24,7 +24,7 @@ router.post("/", authMiddleware, allowRoles("Admin", "Manager"), createProject);
 router.get(
   "/",
   authMiddleware,
-  allowRoles("Admin", "Manager", "Employee"),
+  allowRoles("Admin", "Manager", "Employee", "HR"),
   getProjects,
 );
 
@@ -32,7 +32,7 @@ router.get(
 router.get(
   "/:id",
   authMiddleware,
-  allowRoles("Admin", "Manager", "Employee"),
+  allowRoles("Admin", "Manager", "Employee", "HR"),
   getProjectById,
 );
 

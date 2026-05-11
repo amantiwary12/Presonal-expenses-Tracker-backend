@@ -14,6 +14,8 @@ import transactionRoutes from "./routes/transaction.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import importRoutes from "./routes/import.routes.js";
+import formRoutes from "./routes/form.routes.js";
+import submissionRoutes from "./routes/submission.routes.js";
 
 dotenv.config();
 
@@ -56,6 +58,8 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/import", importRoutes);
+app.use("/api/forms", formRoutes);
+app.use("/api/submissions", submissionRoutes);
 
 /*
    HEALTH CHECK
