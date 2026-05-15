@@ -276,12 +276,12 @@ export const getTransactions = async (req, res) => {
 
 // getWeeklySummary
 
+// ✅ FIXED getWeeklySummary - Remove user filter for non-Employee
 export const getWeeklySummary = async (req, res) => {
   try {
     const now = new Date();
     const { project } = req.query;
 
-    // Start of week (Monday)
     const startOfWeek = new Date(now);
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
@@ -291,36 +291,26 @@ export const getWeeklySummary = async (req, res) => {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-    // Build match stage based on user role
     const match = {
-      ...companyFilter(req),
-      date: {
-        $gte: startOfWeek,
-        $lt: endOfWeek,
-      },
+      company: req.user.company,
+      date: { $gte: startOfWeek, $lt: endOfWeek },
     };
 
-    // Project filter
+    // ✅ ONLY filter by user if role is Employee
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
+
     if (project) {
       match.project = project;
     }
 
-    // Role-based filter - Admin sees all, Employee sees only own
-    if (req.user.role === "Employee") {
-      match.user = req.user._id;
-    }
-    // For Admin/Manager - no user filter (shows all users)
-
     const summary = await Transaction.aggregate([
-      {
-        $match: match,
-      },
+      { $match: match },
       {
         $group: {
           _id: "$type",
-          total: {
-            $sum: "$amount",
-          },
+          total: { $sum: "$amount" },
         },
       },
     ]);
@@ -329,12 +319,8 @@ export const getWeeklySummary = async (req, res) => {
     let expense = 0;
 
     summary.forEach((item) => {
-      if (item._id === "income") {
-        income = item.total;
-      }
-      if (item._id === "expense") {
-        expense = item.total;
-      }
+      if (item._id === "income") income = item.total;
+      if (item._id === "expense") expense = item.total;
     });
 
     res.status(200).json({
@@ -345,6 +331,7 @@ export const getWeeklySummary = async (req, res) => {
       balance: income - expense,
     });
   } catch (error) {
+    console.error("Weekly summary error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -354,6 +341,7 @@ export const getWeeklySummary = async (req, res) => {
 
 // getMonthlySummary
 
+// ✅ FIXED getMonthlySummary - Remove user filter for non-Employee
 export const getMonthlySummary = async (req, res) => {
   try {
     const month = Number(req.query.month);
@@ -370,34 +358,26 @@ export const getMonthlySummary = async (req, res) => {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 1);
 
-    // Build match stage based on user role
     const match = {
-      ...companyFilter(req),
-      date: {
-        $gte: start,
-        $lt: end,
-      },
+      company: req.user.company,
+      date: { $gte: start, $lt: end },
     };
+
+    // ✅ ONLY filter by user if role is Employee
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
 
     if (project) {
       match.project = project;
     }
 
-    // Role-based filter - Admin sees all, Employee sees only own
-    if (req.user.role === "Employee") {
-      match.user = req.user._id;
-    }
-
     const summary = await Transaction.aggregate([
-      {
-        $match: match,
-      },
+      { $match: match },
       {
         $group: {
           _id: "$type",
-          total: {
-            $sum: "$amount",
-          },
+          total: { $sum: "$amount" },
         },
       },
     ]);
@@ -419,6 +399,7 @@ export const getMonthlySummary = async (req, res) => {
       balance: income - expense,
     });
   } catch (error) {
+    console.error("Monthly summary error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -493,10 +474,14 @@ export const getCategorySummary = async (req, res) => {
     const { startDate, endDate, project } = req.query;
 
     const matchStage = {
-  company: req.user.company, // ✅ ADD
-  user: req.user._id,
-  type: "expense",
-};
+      company: req.user.company,
+      type: "expense",
+    };
+
+    // ✅ ONLY filter by user if role is Employee
+    if (req.user.role === "Employee") {
+      matchStage.user = req.user._id;
+    }
 
     if (project) {
       matchStage.project = project;
@@ -511,17 +496,13 @@ export const getCategorySummary = async (req, res) => {
 
       if (endDate && !isNaN(new Date(endDate))) {
         const end = new Date(endDate);
-
         end.setDate(end.getDate() + 1);
-
         matchStage.date.$lt = end;
       }
     }
 
     const summary = await Transaction.aggregate([
-      {
-        $match: matchStage,
-      },
+      { $match: matchStage },
       {
         $addFields: {
           category: {
@@ -532,19 +513,11 @@ export const getCategorySummary = async (req, res) => {
       {
         $group: {
           _id: "$category",
-          total: {
-            $sum: "$amount",
-          },
-          count: {
-            $sum: 1,
-          },
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
         },
       },
-      {
-        $sort: {
-          total: -1,
-        },
-      },
+      { $sort: { total: -1 } },
     ]);
 
     res.status(200).json({
@@ -552,6 +525,7 @@ export const getCategorySummary = async (req, res) => {
       summary,
     });
   } catch (error) {
+    console.error("Category summary error:", error);
     res.status(500).json({
       success: false,
       message: error.message,

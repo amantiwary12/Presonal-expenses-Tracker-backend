@@ -1,15 +1,34 @@
-//form controller 
 import Form from "../models/form.model.js";
 
+
+// HR CREATE FORM
 export const createForm = async (req, res) => {
   try {
+
     if (req.user.role !== "HR") {
-      return res.status(403).json({ message: "Only HR can create forms" });
+      return res.status(403).json({
+        success: false,
+        message: "Only HR can create forms",
+      });
     }
 
+    const {
+      title,
+      description,
+      fields,
+      approvers,
+      notificationEmails,
+    } = req.body;
+
     const form = await Form.create({
-      ...req.body,
+      title,
+      description,
+      fields,
+      approvers,
+      notificationEmails,
+
       createdBy: req.user._id,
+
       company: req.user.company,
     });
 
@@ -17,42 +36,65 @@ export const createForm = async (req, res) => {
       success: true,
       form,
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    console.error("CREATE FORM ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 
+// GET ALL FORMS
 export const getForms = async (req, res) => {
   try {
+
     const forms = await Form.find({
       company: req.user.company,
+    })
+      .populate("createdBy", "name")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      forms,
     });
 
-    res.json({ success: true, forms });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 
+// HR UPDATE FORM
 export const updateForm = async (req, res) => {
   try {
 
-    // ONLY HR
     if (req.user.role !== "HR") {
       return res.status(403).json({
         success: false,
-        message: "Only HR can edit forms",
+        message: "Only HR can update forms",
       });
     }
 
-    const { id } = req.params;
-
-    const form = await Form.findOne({
-      _id: id,
-      company: req.user.company,
-    });
+    const form = await Form.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        company: req.user.company,
+      },
+      req.body,
+      {
+        new: true,
+      }
+    );
 
     if (!form) {
       return res.status(404).json({
@@ -60,15 +102,6 @@ export const updateForm = async (req, res) => {
         message: "Form not found",
       });
     }
-
-    // Update fields
-    form.title = req.body.title || form.title;
-    form.description =
-      req.body.description || form.description;
-
-    form.fields = req.body.fields || form.fields;
-
-    await form.save();
 
     res.status(200).json({
       success: true,
@@ -82,15 +115,14 @@ export const updateForm = async (req, res) => {
       success: false,
       message: error.message,
     });
-
   }
 };
 
 
+// HR DELETE FORM
 export const deleteForm = async (req, res) => {
   try {
 
-    // ONLY HR
     if (req.user.role !== "HR") {
       return res.status(403).json({
         success: false,
@@ -98,10 +130,8 @@ export const deleteForm = async (req, res) => {
       });
     }
 
-    const { id } = req.params;
-
     const form = await Form.findOneAndDelete({
-      _id: id,
+      _id: req.params.id,
       company: req.user.company,
     });
 
@@ -123,6 +153,5 @@ export const deleteForm = async (req, res) => {
       success: false,
       message: error.message,
     });
-
   }
-}; 
+};

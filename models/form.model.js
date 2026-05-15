@@ -1,10 +1,42 @@
-//form model
 import mongoose from "mongoose";
+
+const fieldSchema = new mongoose.Schema(
+  {
+    label: {
+      type: String,
+      required: true,
+    },
+
+    type: {
+      type: String,
+      required: true,
+      enum: ["text", "textarea", "number", "date", "select"],
+    },
+
+    required: {
+      type: Boolean,
+      default: false,
+    },
+
+    options: {
+      type: [String],
+      default: [],
+    },
+  },
+  { _id: false }
+);
 
 const formSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    description: String,
+    title: {
+      type: String,
+      required: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+    },
 
     company: {
       type: mongoose.Schema.Types.ObjectId,
@@ -14,18 +46,11 @@ const formSchema = new mongoose.Schema(
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // HR
+      ref: "User",
       required: true,
     },
 
-    fields: [
-      {
-        label: String,
-        type: String, // text, number, date, select, file
-        required: Boolean,
-        options: [String], // for dropdown
-      },
-    ],
+    fields: [fieldSchema],
 
     approvers: [
       {
@@ -43,4 +68,6 @@ const formSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Form", formSchema);
+const Form = mongoose.model("Form", formSchema);
+
+export default Form;

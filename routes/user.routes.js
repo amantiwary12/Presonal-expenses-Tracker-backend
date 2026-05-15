@@ -18,7 +18,7 @@ const router = express.Router();
    USER MANAGEMENT ROUTES
 */
 
-router.get("/", authMiddleware, allowRoles("Admin", "SuperAdmin"), getAllUsers);
+router.get("/", authMiddleware, allowRoles("Admin", "SuperAdmin", "HR" ), getAllUsers);
 
 router.post("/", authMiddleware, allowRoles("Admin", "SuperAdmin"), createUser);
 

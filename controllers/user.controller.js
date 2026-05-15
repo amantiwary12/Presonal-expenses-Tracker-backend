@@ -14,7 +14,7 @@ export const createUser = async (req, res) => {
     console.log("Current user:", {
       id: req.user._id,
       role: req.user.role,
-      company: req.user.company,
+      company: req.user.company._id,
     });
 
     // ✅ 1. CHECK ROLE FIRST
@@ -53,7 +53,7 @@ export const createUser = async (req, res) => {
       mobileNumber,
       password: hashedPassword,
       role,
-      company: req.user.company, // Use company from logged-in user
+      company: req.user.company._id, // Use company from logged-in user
       isActive: true,
     });
 
@@ -87,7 +87,7 @@ export const createUser = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({
-      company: req.user.company,
+      company: req.user.company._id,
     })
       .select("-password")
       .sort({ createdAt: -1 });
@@ -122,7 +122,7 @@ export const updateUser = async (req, res) => {
     const user = await User.findOneAndUpdate(
       {
         _id: req.params.id,
-        company: req.user.company,
+        company: req.user.company._id,
       },
       { name: req.body.name, role: req.body.role },
       { new: true },
@@ -172,7 +172,7 @@ export const deleteUser = async (req, res) => {
 
     const user = await User.findOneAndDelete({
       _id: req.params.id,
-      company: req.user.company,
+      company: req.user.company._id,
     });
 
     if (!user) {
@@ -218,7 +218,7 @@ export const toggleUserStatus = async (req, res) => {
 
     const user = await User.findOne({
       _id: req.params.id,
-      company: req.user.company,
+      company: req.user.company._id,
     });
 
     if (!user) {
@@ -265,7 +265,7 @@ export const resetPassword = async (req, res) => {
     const user = await User.findOneAndUpdate(
       {
         _id: req.params.id,
-        company: req.user.company,
+        company: req.user.company._id,
       },
       { password: hashedPassword },
     );
