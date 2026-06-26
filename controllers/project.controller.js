@@ -1,8 +1,9 @@
-//project controller 
+//project controller
 import Transaction from "../models/transaction.model.js";
 import Project from "../models/Project.model.js";
 import { sendNotification } from "../utils/sendNotification.js";
 import mongoose from "mongoose";
+import cloudinary from "../config/cloudinary.js";
 
 export const createProject = async (req, res) => {
   try {

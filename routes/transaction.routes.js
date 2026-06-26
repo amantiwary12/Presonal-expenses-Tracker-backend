@@ -12,7 +12,6 @@ import {
   updateTransactionSchema,
 } from "../validation/transaction.validation.js";
 
-
 import {
   createTransaction,
   getTransactions,
@@ -59,15 +58,7 @@ router.put(
   updateTransaction
 );
 
-/* DELETE */
-router.delete(
-  "/:id",
-  authMiddleware,
-  allowRoles("Admin", "FinanceManager"),
-  deleteTransaction
-);
-
-/* SUMMARIES */
+/* SUMMARIES — must be defined before DELETE /:id and GET /:id to avoid param capture */
 router.get(
   "/daily-expenses",
   authMiddleware,
@@ -82,6 +73,7 @@ router.get(
   getDashboardData
 );
 
+/* FIX: /clear must come BEFORE /:id — otherwise Express matches "clear" as an id param */
 router.delete(
   "/clear",
   authMiddleware,
@@ -117,12 +109,28 @@ router.get(
   getCategorySummary
 );
 
+/* Employee included so personal dashboard can show their own summary */
 router.get(
   "/summary",
   authMiddleware,
-  allowRoles("Admin", "FinanceManager", "Manager", "HR"),
+  allowRoles("Admin", "FinanceManager", "Manager", "HR", "Employee"),
   getSummary
 );
 
+router.get(
+  "/export",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Manager"),
+  exportTransactions
+);
+
+/* PARAM ROUTES — must come after all fixed-path routes */
+/* DELETE */
+router.delete(
+  "/:id",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager"),
+  deleteTransaction
+);
 
 export default router;

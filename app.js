@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import mongoSanitize from "express-mongo-sanitize";
+import rateLimit from "express-rate-limit";
 
 import errorHandler from "./middleware/error.middleware.js";
 
@@ -42,6 +43,13 @@ app.use(
    SANITIZE INPUT
 */
 // app.use(mongoSanitize());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: "Too many requests",
+});
+app.use(limiter);
 
 /*
    STATIC FILES

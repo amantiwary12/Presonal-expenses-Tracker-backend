@@ -29,7 +29,7 @@ export const createForm = async (req, res) => {
 
       createdBy: req.user._id,
 
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
     });
 
     res.status(201).json({
@@ -54,7 +54,7 @@ export const getForms = async (req, res) => {
   try {
 
     const forms = await Form.find({
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
     })
       .populate("createdBy", "name")
       .sort({ createdAt: -1 });
@@ -88,7 +88,7 @@ export const updateForm = async (req, res) => {
     const form = await Form.findOneAndUpdate(
       {
         _id: req.params.id,
-        company: req.user.company,
+        company: req.user.company?._id || req.user.company,
       },
       req.body,
       {
@@ -132,7 +132,7 @@ export const deleteForm = async (req, res) => {
 
     const form = await Form.findOneAndDelete({
       _id: req.params.id,
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
     });
 
     if (!form) {

@@ -11,7 +11,7 @@ import cloudinary from "../config/cloudinary.js";
 
 const companyFilter = (req) => {
   return {
-    company: req.user.company,
+    company: req.user.company?._id || req.user.company,
   };
 };
 
@@ -58,7 +58,7 @@ export const createTransaction = async (req, res) => {
     if (req.body.project) {
       project = await Project.findOne({
         _id: req.body.project,
-        user: req.user._id,
+        company: req.user.company?._id || req.user.company,
       });
 
       if (!project) {
@@ -78,7 +78,7 @@ export const createTransaction = async (req, res) => {
 
     const transaction = await Transaction.create({
       user: req.user._id,
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
       amount,
       receiver: req.body.receiver,
       date: req.body.date || new Date(),
@@ -96,7 +96,7 @@ export const createTransaction = async (req, res) => {
     });
 
     await sendNotification({
-      userId: req.user,
+      userId: req.user._id,
       title: "New Transaction",
       message: "Transaction added successfully",
       type: "transaction",
@@ -142,7 +142,7 @@ export const getDailyExpenses = async (req, res) => {
 
     // Build match stage based on user role
     const matchStage = {
-      company: req.user.company, // ✅ ADD THIS LINE
+      company: req.user.company?._id || req.user.company, // ✅ ADD THIS LINE
       type: "expense",
       date: {
         $gte: start,
@@ -292,7 +292,7 @@ export const getWeeklySummary = async (req, res) => {
     endOfWeek.setDate(startOfWeek.getDate() + 7);
 
     const match = {
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
       date: { $gte: startOfWeek, $lt: endOfWeek },
     };
 
@@ -359,7 +359,7 @@ export const getMonthlySummary = async (req, res) => {
     const end = new Date(year, month, 1);
 
     const match = {
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
       date: { $gte: start, $lt: end },
     };
 
@@ -418,7 +418,7 @@ export const getYearlySummary = async (req, res) => {
     const endOfYear = new Date(year + 1, 0, 1);
 
     const match = {
-      company: req.user.company, // ✅ always filter company
+      company: req.user.company?._id || req.user.company, // ✅ always filter company
       date: {
         $gte: startOfYear,
         $lt: endOfYear,
@@ -474,7 +474,7 @@ export const getCategorySummary = async (req, res) => {
     const { startDate, endDate, project } = req.query;
 
     const matchStage = {
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
       type: "expense",
     };
 
@@ -548,7 +548,7 @@ export const deleteTransaction = async (req, res) => {
 
     let query = {
       _id: id,
-      company: req.user.company, // ✅ ADD THIS
+      company: req.user.company?._id || req.user.company, // ✅ ADD THIS
     };
 
     // Employee can delete only own (if ever allowed)
@@ -607,7 +607,7 @@ export const updateTransaction = async (req, res) => {
     // ✅ Build secure query (company + role based)
     let query = {
       _id: id,
-      company: req.user.company,
+      company: req.user.company?._id || req.user.company,
     };
 
     if (req.user.role === "Employee") {
@@ -661,7 +661,7 @@ export const updateTransaction = async (req, res) => {
     if (updateData.type === "expense" && updateData.project) {
       const project = await Project.findOne({
   _id: updateData.project,
-  company: req.user.company,
+  company: req.user.company?._id || req.user.company,
 });
 
       if (!project) {
@@ -675,7 +675,7 @@ export const updateTransaction = async (req, res) => {
       const expenses = await Transaction.aggregate([
         {
           $match: {
-            company: req.user.company,
+            company: req.user.company?._id || req.user.company,
             project: project._id,
             type: "expense",
             _id: { $ne: existingTransaction._id },
@@ -729,9 +729,12 @@ export const getSummary = async (req, res) => {
     const { startDate, endDate } = req.query;
 
     const matchStage = {
-  company: req.user.company, // ✅ ADD
-  user: req.user._id,
-};
+      company: req.user.company?._id || req.user.company,
+    };
+
+    if (req.user.role === "Employee") {
+      matchStage.user = req.user._id;
+    }
 
     if (startDate || endDate) {
       matchStage.date = {};
@@ -792,9 +795,12 @@ export const getCategoryByTypeSummary = async (req, res) => {
     const { type, startDate, endDate, project } = req.query;
 
     const match = {
-  company: req.user.company, // ✅ ADD
-  user: req.user._id,
-};
+      company: req.user.company?._id || req.user.company,
+    };
+
+    if (req.user.role === "Employee") {
+      match.user = req.user._id;
+    }
 
     if (type) {
       const allowedTypes = ["income", "expense"];
@@ -959,7 +965,7 @@ export const exportTransactions = async (req, res) => {
     const { startDate, endDate, type, category, project } = req.query;
 
     const query = {
-  company: req.user.company, // ✅ ADD
+  company: req.user.company?._id || req.user.company, // ✅ ADD
 };
 
 if (req.user.role === "Employee") {
@@ -1073,7 +1079,7 @@ if (req.user.role === "Employee") {
 export const clearTransactions = async (req, res) => {
   try {
     await Transaction.deleteMany({
-      company: req.user.company, // ✅ FIX,
+      company: req.user.company?._id || req.user.company, // ✅ FIX,
       user: req.user._id,
     });
 

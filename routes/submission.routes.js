@@ -5,12 +5,16 @@ import authMiddleware from "../middleware/auth.middleware.js";
 
 import {
   submitForm,
-  getFormSubmissions, 
+  getFormSubmissions,
+  getMySubmissions,
   updateSubmissionStatus,
   approveForm,
 } from "../controllers/submission.controller.js";
 
 const router = express.Router();
+
+// Get logged-in user's own submissions
+router.get("/my", authMiddleware, getMySubmissions);
 
 // Employee submit form
 router.post("/", authMiddleware, submitForm);
