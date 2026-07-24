@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const fieldSchema = new mongoose.Schema(
   {
@@ -64,9 +65,29 @@ const formSchema = new mongoose.Schema(
         type: String,
       },
     ],
+
+    // Public QR sharing: when enabled, anyone with the link/QR can view
+    // and submit this form without logging in.
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+
+    publicToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
   },
   { timestamps: true }
 );
+
+formSchema.methods.ensurePublicToken = function () {
+  if (!this.publicToken) {
+    this.publicToken = crypto.randomBytes(16).toString("hex");
+  }
+  return this.publicToken;
+};
 
 const Form = mongoose.model("Form", formSchema);
 

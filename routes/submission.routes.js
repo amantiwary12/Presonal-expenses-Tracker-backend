@@ -1,10 +1,12 @@
 //submission route
 import express from "express";
+import rateLimit from "express-rate-limit";
 
 import authMiddleware from "../middleware/auth.middleware.js";
 
 import {
   submitForm,
+  submitPublicForm,
   getFormSubmissions,
   getMySubmissions,
   updateSubmissionStatus,
@@ -12,6 +14,16 @@ import {
 } from "../controllers/submission.controller.js";
 
 const router = express.Router();
+
+// Public submissions have no login to gate them, so cap volume per IP
+const publicSubmitLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: "Too many submissions, please try again later" },
+});
+
+// PUBLIC: submit a form reached via its QR/share link — no auth
+router.post("/public/:token", publicSubmitLimiter, submitPublicForm);
 
 // Get logged-in user's own submissions
 router.get("/my", authMiddleware, getMySubmissions);

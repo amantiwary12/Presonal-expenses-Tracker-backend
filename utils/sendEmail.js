@@ -1,59 +1,48 @@
 import nodemailer from "nodemailer";
 
-export const sendEmail = async ({ to, subject, text }) => {
-  // 1. If SMTP credentials are provided in .env, use Gmail/SMTP
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+let brevoTransporter = null;
 
+const getBrevoTransporter = () => {
+  if (!process.env.BREVO_SMTP_LOGIN || !process.env.BREVO_SMTP_KEY) {
+    return null;
+  }
+  if (!brevoTransporter) {
+    brevoTransporter = nodemailer.createTransport({
+      host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+      port: Number(process.env.BREVO_SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.BREVO_SMTP_LOGIN,
+        pass: process.env.BREVO_SMTP_KEY,
+      },
+    });
+  }
+  return brevoTransporter;
+};
+
+export const sendEmail = async ({ to, subject, text }) => {
+  // 1. Primary: Brevo SMTP relay
+  const transporter = getBrevoTransporter();
+  if (transporter) {
+    try {
       return await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_FROM || process.env.BREVO_SMTP_LOGIN,
         to,
         subject,
         text,
       });
-    } catch (smtpError) {
-      console.error("Gmail SMTP failed, falling back to FormSubmit API...", smtpError);
+    } catch (brevoError) {
+      console.error("Brevo SMTP failed, falling back to Ethereal test preview...", brevoError);
     }
+  } else {
+    console.warn("BREVO_SMTP_LOGIN / BREVO_SMTP_KEY not set — falling back to Ethereal test preview.");
   }
 
-  // 2. Fallback: Automatically send real email to HR's inbox using Submify zero-config delivery API!
-  console.log(`🚀 Dispatching real email to ${to} using Submify zero-config delivery API...`);
-  try {
-    const response = await fetch(`https://submify.vercel.app/${to.trim()}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-      body: JSON.stringify({
-        _subject: subject,
-        Message: text,
-      }),
-    });
-
-    if (response.status === 200) {
-      console.log(`✅ Real email successfully sent automatically to ${to} via Submify API!`);
-      return { success: true, provider: "submify" };
-    } else {
-      console.error("Submify API returned failure status:", response.status);
-    }
-  } catch (apiError) {
-    console.error("Failed to deliver real email via Submify API:", apiError);
-  }
-
-  // 3. Last Fallback: Ethereal test SMTP preview
+  // 2. Last Fallback: Ethereal test SMTP preview (local dev only, not delivered to real inbox)
   console.warn("Generating a free test Ethereal SMTP account as final fallback...");
   try {
     const testAccount = await nodemailer.createTestAccount();
-    const transporter = nodemailer.createTransport({
+    const etherealTransporter = nodemailer.createTransport({
       host: "smtp.ethereal.email",
       port: 587,
       secure: false,
@@ -63,7 +52,7 @@ export const sendEmail = async ({ to, subject, text }) => {
       },
     });
 
-    const info = await transporter.sendMail({
+    const info = await etherealTransporter.sendMail({
       from: `"Expense Tracker Forms" <${testAccount.user}>`,
       to,
       subject,

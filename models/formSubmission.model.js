@@ -20,6 +20,17 @@ const submissionSchema = new mongoose.Schema(
       ref: "User",
     },
 
+    // Set when a form was submitted via public QR link by someone with no account
+    guestName: {
+      type: String,
+      trim: true,
+    },
+
+    guestContact: {
+      type: String,
+      trim: true,
+    },
+
     responses: [
       {
         fieldLabel: String,

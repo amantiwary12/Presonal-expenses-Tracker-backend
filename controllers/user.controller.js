@@ -2,12 +2,17 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
+const MANAGER_ROLES = ["Admin", "SuperAdmin", "HR"];
+const PRIVILEGED_ROLES = ["Admin", "SuperAdmin"];
+const isPrivileged = (role) => PRIVILEGED_ROLES.includes(role);
+
 /*
-   CREATE USER (Admin adds user to same company)
+   CREATE USER (Admin/HR adds user to same company)
+   HR cannot create Admin/SuperAdmin accounts (privilege-escalation guard)
 */
 export const createUser = async (req, res) => {
   try {
-    const { name, mobileNumber, password, role } = req.body;
+    const { name, mobileNumber, email, password, role } = req.body;
 
     console.log("=== CREATE USER DEBUG ===");
     console.log("Request body:", { name, mobileNumber, role });
@@ -18,10 +23,18 @@ export const createUser = async (req, res) => {
     });
 
     // ✅ 1. CHECK ROLE FIRST
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    if (!MANAGER_ROLES.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only Admin or SuperAdmin can create users",
+        message: "Only Admin, SuperAdmin, or HR can create users",
+      });
+    }
+
+    // ✅ 1b. HR cannot create Admin/SuperAdmin accounts
+    if (req.user.role === "HR" && isPrivileged(role)) {
+      return res.status(403).json({
+        success: false,
+        message: "HR cannot create Admin or SuperAdmin accounts",
       });
     }
 
@@ -51,6 +64,7 @@ export const createUser = async (req, res) => {
     const user = await User.create({
       name,
       mobileNumber,
+      email: email?.trim() || null,
       password: hashedPassword,
       role,
       company: req.user.company._id, // Use company from logged-in user
@@ -66,6 +80,7 @@ export const createUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         mobileNumber: user.mobileNumber,
+        email: user.email,
         role: user.role,
         isActive: user.isActive,
         createdAt: user.createdAt,
@@ -108,15 +123,36 @@ export const getAllUsers = async (req, res) => {
 
 /*
    UPDATE USER (ONLY SAME COMPANY)
+   HR cannot edit Admin/SuperAdmin accounts, nor promote anyone to Admin/SuperAdmin
 */
 export const updateUser = async (req, res) => {
   try {
-    // Allow Admin or SuperAdmin to update
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    if (!MANAGER_ROLES.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only Admin or SuperAdmin can update users",
+        message: "Only Admin, SuperAdmin, or HR can update users",
       });
+    }
+
+    if (req.user.role === "HR") {
+      if (isPrivileged(req.body.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "HR cannot promote a user to Admin or SuperAdmin",
+        });
+      }
+
+      const targetUser = await User.findOne({
+        _id: req.params.id,
+        company: req.user.company._id,
+      }).select("role");
+
+      if (targetUser && isPrivileged(targetUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "HR cannot edit an Admin or SuperAdmin account",
+        });
+      }
     }
 
     const user = await User.findOneAndUpdate(
@@ -124,7 +160,7 @@ export const updateUser = async (req, res) => {
         _id: req.params.id,
         company: req.user.company._id,
       },
-      { name: req.body.name, role: req.body.role },
+      { name: req.body.name, role: req.body.role, email: req.body.email?.trim() || null },
       { new: true },
     ).select("-password");
 
@@ -151,14 +187,14 @@ export const updateUser = async (req, res) => {
 
 /*
    DELETE USER (ONLY SAME COMPANY)
+   HR cannot delete Admin/SuperAdmin accounts
 */
 export const deleteUser = async (req, res) => {
   try {
-    // Allow Admin or SuperAdmin to delete
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    if (!MANAGER_ROLES.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only Admin or SuperAdmin can delete users",
+        message: "Only Admin, SuperAdmin, or HR can delete users",
       });
     }
 
@@ -168,6 +204,20 @@ export const deleteUser = async (req, res) => {
         success: false,
         message: "You cannot delete your own account",
       });
+    }
+
+    if (req.user.role === "HR") {
+      const targetUser = await User.findOne({
+        _id: req.params.id,
+        company: req.user.company._id,
+      }).select("role");
+
+      if (targetUser && isPrivileged(targetUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "HR cannot delete an Admin or SuperAdmin account",
+        });
+      }
     }
 
     const user = await User.findOneAndDelete({
@@ -197,14 +247,14 @@ export const deleteUser = async (req, res) => {
 
 /*
    TOGGLE USER STATUS (ONLY SAME COMPANY)
+   HR cannot toggle Admin/SuperAdmin accounts
 */
 export const toggleUserStatus = async (req, res) => {
   try {
-    // Allow Admin or SuperAdmin to toggle status
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    if (!MANAGER_ROLES.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only Admin or SuperAdmin can change user status",
+        message: "Only Admin, SuperAdmin, or HR can change user status",
       });
     }
 
@@ -228,6 +278,13 @@ export const toggleUserStatus = async (req, res) => {
       });
     }
 
+    if (req.user.role === "HR" && isPrivileged(user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "HR cannot change an Admin or SuperAdmin account's status",
+      });
+    }
+
     user.isActive = !user.isActive;
     await user.save();
 
@@ -247,17 +304,31 @@ export const toggleUserStatus = async (req, res) => {
 
 /*
    RESET PASSWORD (ONLY SAME COMPANY)
+   HR cannot reset an Admin/SuperAdmin account's password
 */
 export const resetPassword = async (req, res) => {
   try {
     const { newPassword } = req.body;
 
-    // Allow Admin or SuperAdmin to reset passwords
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    if (!MANAGER_ROLES.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only Admin or SuperAdmin can reset passwords",
+        message: "Only Admin, SuperAdmin, or HR can reset passwords",
       });
+    }
+
+    if (req.user.role === "HR") {
+      const targetUser = await User.findOne({
+        _id: req.params.id,
+        company: req.user.company._id,
+      }).select("role");
+
+      if (targetUser && isPrivileged(targetUser.role)) {
+        return res.status(403).json({
+          success: false,
+          message: "HR cannot reset an Admin or SuperAdmin account's password",
+        });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);

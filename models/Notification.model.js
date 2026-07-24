@@ -29,6 +29,7 @@ const notificationSchema = new mongoose.Schema(
         "project",
         "warning",
         "system",
+        "form",
       ],
       default: "system",
     },

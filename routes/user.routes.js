@@ -20,33 +20,33 @@ const router = express.Router();
 
 router.get("/", authMiddleware, allowRoles("Admin", "SuperAdmin", "HR" ), getAllUsers);
 
-router.post("/", authMiddleware, allowRoles("Admin", "SuperAdmin"), createUser);
+router.post("/", authMiddleware, allowRoles("Admin", "SuperAdmin", "HR"), createUser);
 
 router.put(
   "/:id",
   authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
+  allowRoles("Admin", "SuperAdmin", "HR"),
   updateUser,
 );
 
 router.delete(
   "/:id",
   authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
+  allowRoles("Admin", "SuperAdmin", "HR"),
   deleteUser,
 );
 
 router.patch(
   "/:id/status",
   authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
+  allowRoles("Admin", "SuperAdmin", "HR"),
   toggleUserStatus,
 );
 
 router.patch(
   "/:id/reset-password",
   authMiddleware,
-  allowRoles("Admin", "SuperAdmin"),
+  allowRoles("Admin", "SuperAdmin", "HR"),
   resetPassword,
 );
 

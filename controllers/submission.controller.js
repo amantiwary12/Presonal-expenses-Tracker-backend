@@ -230,44 +230,8 @@ export const submitForm = async (req, res) => {
       responses,
     });
 
-    // Send email notifications to HR / Form Creator
-    const targetEmails = [];
-    if (form.notificationEmails && form.notificationEmails.length > 0) {
-      form.notificationEmails.forEach(email => {
-        if (email && email.trim() !== "") {
-          targetEmails.push(email.trim());
-        }
-      });
-    }
-
-    // Fallback: if no notification emails are explicitly set, send to the form creator's email address!
-    if (targetEmails.length === 0 && form.createdBy && form.createdBy.email) {
-      targetEmails.push(form.createdBy.email.trim());
-    }
-
-    if (targetEmails.length > 0) {
-      const emailSubject = `New Submission for Form: ${form.title}`;
-      let emailText = `A new form submission has been received.\n\n`;
-      emailText += `Form: ${form.title}\n`;
-      emailText += `Submitted By: ${req.user.name} (${req.user.mobileNumber || "N/A"})\n`;
-      emailText += `Date: ${new Date().toLocaleString()}\n\n`;
-      emailText += `Responses:\n`;
-      
-      responses.forEach((resp) => {
-        emailText += `- ${resp.fieldLabel}: ${resp.value}\n`;
-      });
-      
-      targetEmails.forEach((email) => {
-        sendEmail({
-          to: email,
-          subject: emailSubject,
-          text: emailText,
-        }).catch((err) => console.error(`Error sending email to ${email}:`, err));
-      });
-    }
-
     // ─────────────────────────────────────────
-    // NOTIFY ALL HR MEMBERS IN THE COMPANY
+    // GATHER RECIPIENTS: all HR users + the approvers HR selected on the form
     // ─────────────────────────────────────────
     const hrUsers = await User.find({
       company: req.user.company._id,
@@ -275,6 +239,62 @@ export const submitForm = async (req, res) => {
       isActive: true,
     });
 
+    const approverUsers =
+      form.approvers && form.approvers.length > 0
+        ? await User.find({ _id: { $in: form.approvers } })
+        : [];
+
+    // Manually-entered notification emails on the form (kept for backward compatibility)
+    const manualEmails = (form.notificationEmails || [])
+      .map((email) => email?.trim())
+      .filter(Boolean);
+    if (form.createdBy?.email) manualEmails.push(form.createdBy.email.trim());
+
+    const hrEmails = [
+      ...new Set([...hrUsers.map((u) => u.email).filter(Boolean), ...manualEmails]),
+    ];
+    const approverEmails = [
+      ...new Set(
+        approverUsers.map((u) => u.email).filter((email) => email && !hrEmails.includes(email))
+      ),
+    ];
+
+    // ─────────────────────────────────────────
+    // SEND EMAILS
+    // ─────────────────────────────────────────
+    let responseSummary = `Form: ${form.title}\n`;
+    responseSummary += `Submitted By: ${req.user.name} (${req.user.mobileNumber || "N/A"})\n`;
+    responseSummary += `Date: ${new Date().toLocaleString()}\n\n`;
+    responseSummary += `Responses:\n`;
+    responses.forEach((resp) => {
+      responseSummary += `- ${resp.fieldLabel}: ${resp.value}\n`;
+    });
+
+    const emailJobs = [];
+
+    hrEmails.forEach((email) => {
+      emailJobs.push(
+        sendEmail({
+          to: email,
+          subject: `New Submission for Form: ${form.title}`,
+          text: `A new form submission has been received and is awaiting review.\n\n${responseSummary}`,
+        }).catch((err) => console.error(`Error sending email to ${email}:`, err))
+      );
+    });
+
+    approverEmails.forEach((email) => {
+      emailJobs.push(
+        sendEmail({
+          to: email,
+          subject: `Approval Needed: ${form.title}`,
+          text: `${req.user.name} submitted "${form.title}" and you have been selected as an approver for this form.\n\n${responseSummary}`,
+        }).catch((err) => console.error(`Error sending email to ${email}:`, err))
+      );
+    });
+
+    // ─────────────────────────────────────────
+    // NOTIFY ALL HR MEMBERS IN THE COMPANY (in-app)
+    // ─────────────────────────────────────────
     const notifyPromises = hrUsers.map((hrUser) =>
       sendNotification({
         userId: hrUser._id,
@@ -285,23 +305,21 @@ export const submitForm = async (req, res) => {
     );
 
     // ─────────────────────────────────────────
-    // NOTIFY APPROVERS THAT HR SELECTED IN THE FORM
+    // NOTIFY APPROVERS THAT HR SELECTED IN THE FORM (in-app)
     // ─────────────────────────────────────────
-    if (form.approvers && form.approvers.length > 0) {
-      form.approvers.forEach((approverId) => {
-        notifyPromises.push(
-          sendNotification({
-            userId: approverId,
-            title: "Form Submitted — Your Approval Needed",
-            message: `${req.user.name} submitted "${form.title}". You are listed as an approver.`,
-            type: "form",
-          })
-        );
-      });
-    }
+    approverUsers.forEach((approverUser) => {
+      notifyPromises.push(
+        sendNotification({
+          userId: approverUser._id,
+          title: "Form Submitted — Your Approval Needed",
+          message: `${req.user.name} submitted "${form.title}". You are listed as an approver.`,
+          type: "form",
+        })
+      );
+    });
 
-    // Run all notifications in parallel (don't await individually — fire & forget)
-    await Promise.allSettled(notifyPromises);
+    // Run all emails + notifications in parallel (don't await individually — fire & forget)
+    await Promise.allSettled([...emailJobs, ...notifyPromises]);
 
     res.status(201).json({
       success: true,
@@ -310,6 +328,127 @@ export const submitForm = async (req, res) => {
     });
   } catch (error) {
     console.error("SUBMIT FORM ERROR:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────
+// POST /api/submissions/public/:token
+// PUBLIC — no login required. Reached by scanning a form's QR code.
+// Submitter identity is whatever name/contact they typed on the form.
+// ─────────────────────────────────────────────
+export const submitPublicForm = async (req, res) => {
+  try {
+    const { guestName, guestContact, responses } = req.body;
+
+    if (!guestName || !guestName.trim()) {
+      return res.status(400).json({ success: false, message: "Name is required" });
+    }
+    if (!Array.isArray(responses)) {
+      return res.status(400).json({ success: false, message: "responses is required" });
+    }
+
+    const form = await Form.findOne({
+      publicToken: req.params.token,
+      isPublic: true,
+    }).populate("createdBy", "email");
+
+    if (!form) {
+      return res.status(404).json({ success: false, message: "This form is not available" });
+    }
+
+    const submission = await FormSubmission.create({
+      form: form._id,
+      company: form.company,
+      guestName: guestName.trim(),
+      guestContact: (guestContact || "").trim(),
+      responses,
+    });
+
+    const hrUsers = await User.find({
+      company: form.company,
+      role: "HR",
+      isActive: true,
+    });
+
+    const approverUsers =
+      form.approvers && form.approvers.length > 0
+        ? await User.find({ _id: { $in: form.approvers } })
+        : [];
+
+    const manualEmails = (form.notificationEmails || [])
+      .map((email) => email?.trim())
+      .filter(Boolean);
+    if (form.createdBy?.email) manualEmails.push(form.createdBy.email.trim());
+
+    const hrEmails = [
+      ...new Set([...hrUsers.map((u) => u.email).filter(Boolean), ...manualEmails]),
+    ];
+    const approverEmails = [
+      ...new Set(
+        approverUsers.map((u) => u.email).filter((email) => email && !hrEmails.includes(email))
+      ),
+    ];
+
+    let responseSummary = `Form: ${form.title}\n`;
+    responseSummary += `Submitted By: ${guestName.trim()} (${guestContact?.trim() || "N/A"}) — via public QR link\n`;
+    responseSummary += `Date: ${new Date().toLocaleString()}\n\n`;
+    responseSummary += `Responses:\n`;
+    responses.forEach((resp) => {
+      responseSummary += `- ${resp.fieldLabel}: ${resp.value}\n`;
+    });
+
+    const emailJobs = [];
+
+    hrEmails.forEach((email) => {
+      emailJobs.push(
+        sendEmail({
+          to: email,
+          subject: `New Submission for Form: ${form.title}`,
+          text: `A new form submission has been received and is awaiting review.\n\n${responseSummary}`,
+        }).catch((err) => console.error(`Error sending email to ${email}:`, err))
+      );
+    });
+
+    approverEmails.forEach((email) => {
+      emailJobs.push(
+        sendEmail({
+          to: email,
+          subject: `Approval Needed: ${form.title}`,
+          text: `${guestName.trim()} submitted "${form.title}" and you have been selected as an approver for this form.\n\n${responseSummary}`,
+        }).catch((err) => console.error(`Error sending email to ${email}:`, err))
+      );
+    });
+
+    const notifyPromises = hrUsers.map((hrUser) =>
+      sendNotification({
+        userId: hrUser._id,
+        title: "New Form Submission",
+        message: `${guestName.trim()} submitted "${form.title}" via QR link. Please review it.`,
+        type: "form",
+      })
+    );
+
+    approverUsers.forEach((approverUser) => {
+      notifyPromises.push(
+        sendNotification({
+          userId: approverUser._id,
+          title: "Form Submitted — Your Approval Needed",
+          message: `${guestName.trim()} submitted "${form.title}" via QR link. You are listed as an approver.`,
+          type: "form",
+        })
+      );
+    });
+
+    await Promise.allSettled([...emailJobs, ...notifyPromises]);
+
+    res.status(201).json({
+      success: true,
+      message: "Form submitted successfully.",
+      submission,
+    });
+  } catch (error) {
+    console.error("SUBMIT PUBLIC FORM ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

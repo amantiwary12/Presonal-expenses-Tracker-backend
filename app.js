@@ -17,6 +17,7 @@ import userRoutes from "./routes/user.routes.js";
 import importRoutes from "./routes/import.routes.js";
 import formRoutes from "./routes/form.routes.js";
 import submissionRoutes from "./routes/submission.routes.js";
+import attendanceRoutes from "./routes/attendance.routes.js";
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/import", importRoutes);
 app.use("/api/forms", formRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use("/api/attendance", attendanceRoutes);
 
 /*
    HEALTH CHECK
