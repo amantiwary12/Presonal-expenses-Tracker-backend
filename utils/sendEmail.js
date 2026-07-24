@@ -15,6 +15,9 @@ const getBrevoTransporter = () => {
         user: process.env.BREVO_SMTP_LOGIN,
         pass: process.env.BREVO_SMTP_KEY,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000,
     });
   }
   return brevoTransporter;
@@ -50,6 +53,9 @@ export const sendEmail = async ({ to, subject, text }) => {
         user: testAccount.user,
         pass: testAccount.pass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 15000,
     });
 
     const info = await etherealTransporter.sendMail({

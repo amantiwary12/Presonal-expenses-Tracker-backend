@@ -318,8 +318,9 @@ export const submitForm = async (req, res) => {
       );
     });
 
-    // Run all emails + notifications in parallel (don't await individually — fire & forget)
-    await Promise.allSettled([...emailJobs, ...notifyPromises]);
+    // Respond immediately — don't make the submitter wait on email/SMTP delivery.
+    // Emails/notifications run in the background; each job already has its own .catch.
+    Promise.allSettled([...emailJobs, ...notifyPromises]);
 
     res.status(201).json({
       success: true,
@@ -440,7 +441,8 @@ export const submitPublicForm = async (req, res) => {
       );
     });
 
-    await Promise.allSettled([...emailJobs, ...notifyPromises]);
+    // Respond immediately — don't make the guest wait on email/SMTP delivery.
+    Promise.allSettled([...emailJobs, ...notifyPromises]);
 
     res.status(201).json({
       success: true,
