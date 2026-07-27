@@ -7,6 +7,9 @@ import { sendNotification } from "../utils/sendNotification.js";
 import mongoose from "mongoose";
 import fs from "fs";
 import cloudinary from "../config/cloudinary.js";
+import Tesseract from "tesseract.js";
+import { extractAmount } from "../utils/extractAmount.js";
+import { emitToCompany } from "../utils/socket.js";
 
 
 const companyFilter = (req) => {
@@ -102,6 +105,8 @@ export const createTransaction = async (req, res) => {
       type: "transaction",
     });
 
+    emitToCompany(req.user.company, "transaction:created", transaction);
+
     res.status(201).json({
       success: true,
       transaction,
@@ -112,6 +117,35 @@ export const createTransaction = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+// Reads a receipt/payment-screenshot image (in-memory, not saved) and
+// OCRs it to guess the transaction amount, so the Add Transaction form
+// can auto-fill the amount field for the user to confirm/edit.
+export const scanReceipt = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image uploaded",
+      });
+    }
+
+    const { data } = await Tesseract.recognize(req.file.buffer, "eng");
+    const amount = extractAmount(data.text);
+
+    res.status(200).json({
+      success: true,
+      amount,
+      rawText: data.text,
+    });
+  } catch (error) {
+    console.error("OCR scan failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to scan receipt",
     });
   }
 };
@@ -570,6 +604,8 @@ export const deleteTransaction = async (req, res) => {
       await cloudinary.uploader.destroy(transaction.screenshot.public_id);
     }
 
+    emitToCompany(req.user.company, "transaction:deleted", { _id: id });
+
     res.status(200).json({
       success: true,
       message: "Transaction deleted successfully",
@@ -709,6 +745,8 @@ export const updateTransaction = async (req, res) => {
         runValidators: true,
       }
     );
+
+    emitToCompany(req.user.company, "transaction:updated", transaction);
 
     res.status(200).json({
       success: true,
@@ -1082,6 +1120,8 @@ export const clearTransactions = async (req, res) => {
       company: req.user.company?._id || req.user.company, // ✅ FIX,
       user: req.user._id,
     });
+
+    emitToCompany(req.user.company, "transaction:cleared", { userId: req.user._id });
 
     res.status(200).json({
       success: true,

@@ -1,6 +1,7 @@
-//notification.controller 
+//notification.controller
 import mongoose from "mongoose";
 import Notification from "../models/Notification.model.js";
+import { emitToUser } from "../utils/socket.js";
 
 // GET /api/notifications
 export const getNotifications = async (req, res) => {
@@ -70,6 +71,8 @@ export const markNotificationAsRead = async (req, res) => {
       });
     }
 
+    emitToUser(req.user._id, "notification:updated", notification);
+
     res.status(200).json({
       success: true,
       message: "Notification marked as read",
@@ -110,6 +113,8 @@ export const deleteNotification = async (req, res) => {
         message: "Notification not found",
       });
     }
+
+    emitToUser(req.user._id, "notification:deleted", { _id: id });
 
     res.status(200).json({
       success: true,

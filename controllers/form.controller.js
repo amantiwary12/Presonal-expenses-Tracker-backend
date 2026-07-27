@@ -1,4 +1,5 @@
 import Form from "../models/form.model.js";
+import { emitToCompany } from "../utils/socket.js";
 
 
 // HR CREATE FORM
@@ -31,6 +32,8 @@ export const createForm = async (req, res) => {
 
       company: req.user.company?._id || req.user.company,
     });
+
+    emitToCompany(req.user.company, "form:created", form);
 
     res.status(201).json({
       success: true,
@@ -103,6 +106,8 @@ export const updateForm = async (req, res) => {
       });
     }
 
+    emitToCompany(req.user.company, "form:updated", form);
+
     res.status(200).json({
       success: true,
       message: "Form updated successfully",
@@ -150,6 +155,8 @@ export const toggleFormShare = async (req, res) => {
     }
 
     await form.save();
+
+    emitToCompany(req.user.company, "form:updated", form);
 
     res.status(200).json({
       success: true,
@@ -219,6 +226,8 @@ export const deleteForm = async (req, res) => {
         message: "Form not found",
       });
     }
+
+    emitToCompany(req.user.company, "form:deleted", { _id: req.params.id });
 
     res.status(200).json({
       success: true,

@@ -3,6 +3,7 @@ import XLSX from "xlsx";
 import Attendance from "../models/attendance.model.js";
 import AttendanceSettings from "../models/attendanceSettings.model.js";
 import User from "../models/user.model.js";
+import { emitToCompany } from "../utils/socket.js";
 
 /*
 UTILITY: Safe Date Parser (mirrors controllers/import.controller.js)
@@ -245,6 +246,10 @@ export const uploadAttendance = async (req, res) => {
       }
     }
 
+    if (inserted + updated > 0) {
+      emitToCompany(companyId, "attendance:bulkUpdated", { inserted, updated });
+    }
+
     res.status(200).json({
       success: true,
       message: "Attendance import completed",
@@ -360,6 +365,8 @@ export const setManualAttendance = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    emitToCompany(companyId, "attendance:updated", record);
+
     res.status(200).json({ success: true, message: "Attendance updated", record });
   } catch (error) {
     console.error("MANUAL ATTENDANCE UPDATE ERROR:", error);
@@ -390,6 +397,8 @@ export const deleteAttendanceRecord = async (req, res) => {
     if (!record) {
       return res.status(404).json({ success: false, message: "No attendance record found for that date" });
     }
+
+    emitToCompany(companyId, "attendance:deleted", { userId, date: parsedDate });
 
     res.status(200).json({ success: true, message: "Attendance record deleted" });
   } catch (error) {
@@ -489,6 +498,8 @@ export const updateAttendanceSettings = async (req, res) => {
       },
       { upsert: true, new: true }
     );
+
+    emitToCompany(companyId, "attendance:settingsUpdated", settings);
 
     res.status(200).json({ success: true, message: "Attendance settings updated", settings });
   } catch (error) {

@@ -2,7 +2,7 @@
 
 import express from "express";
 
-import upload from "../middleware/upload.middleware.js";
+import upload, { uploadMemory } from "../middleware/upload.middleware.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 import validate from "../middleware/validate.middleware.js";
 import allowRoles from "../middleware/allowRoles.js";
@@ -26,6 +26,7 @@ import {
   exportTransactions,
   clearTransactions,
   getDailyExpenses,
+  scanReceipt,
 } from "../controllers/transaction.controller.js";
 
 const router = express.Router();
@@ -38,6 +39,15 @@ router.post(
   upload.single("screenshot"),
   validate(transactionSchema),
   createTransaction
+);
+
+/* OCR — reads the uploaded image and guesses the amount, no DB write */
+router.post(
+  "/scan-receipt",
+  authMiddleware,
+  allowRoles("Admin", "FinanceManager", "Employee"),
+  uploadMemory.single("screenshot"),
+  scanReceipt
 );
 
 /* READ */

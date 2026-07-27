@@ -188,6 +188,7 @@ import FormSubmission from "../models/formSubmission.model.js";
 import User from "../models/user.model.js";
 import { sendNotification } from "../utils/sendNotification.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { emitToCompany } from "../utils/socket.js";
 
 // ─────────────────────────────────────────────
 // POST /api/submissions
@@ -322,6 +323,8 @@ export const submitForm = async (req, res) => {
     // Emails/notifications run in the background; each job already has its own .catch.
     Promise.allSettled([...emailJobs, ...notifyPromises]);
 
+    emitToCompany(req.user.company, "submission:created", submission);
+
     res.status(201).json({
       success: true,
       message: "Form submitted successfully. HR has been notified.",
@@ -444,6 +447,8 @@ export const submitPublicForm = async (req, res) => {
     // Respond immediately — don't make the guest wait on email/SMTP delivery.
     Promise.allSettled([...emailJobs, ...notifyPromises]);
 
+    emitToCompany(form.company, "submission:created", submission);
+
     res.status(201).json({
       success: true,
       message: "Form submitted successfully.",
@@ -557,6 +562,8 @@ export const updateSubmissionStatus = async (req, res) => {
       });
     }
 
+    emitToCompany(req.user.company, "submission:updated", submission);
+
     res.status(200).json({
       success: true,
       message: `Submission ${status} successfully`,
@@ -602,6 +609,8 @@ export const approveForm = async (req, res) => {
         type: "form",
       });
     }
+
+    emitToCompany(req.user.company, "submission:updated", submission);
 
     res.status(200).json({
       success: true,

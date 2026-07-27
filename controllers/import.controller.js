@@ -2,6 +2,7 @@
 import XLSX from "xlsx";
 import Transaction from "../models/transaction.model.js";
 import Project from "../models/Project.model.js";
+import { emitToCompany } from "../utils/socket.js";
 
 /*
 UTILITY: Safe Date Parser
@@ -152,6 +153,7 @@ export const importProjectData = async (req, res) => {
     // 4. BULK INSERT
     if (bulkData.length > 0) {
       await Transaction.insertMany(bulkData);
+      emitToCompany(companyId, "transaction:cleared", { projectId }); // bulk change — full refetch is simplest
     }
 
     // 5. RESPONSE

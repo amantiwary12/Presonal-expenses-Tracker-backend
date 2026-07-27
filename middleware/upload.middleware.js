@@ -26,4 +26,13 @@ const upload = multer({
   },
 });
 
+// In-memory storage for OCR scanning — the image is only read for text
+// extraction and never persisted, so it doesn't need to hit Cloudinary.
+export const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
 export default upload;

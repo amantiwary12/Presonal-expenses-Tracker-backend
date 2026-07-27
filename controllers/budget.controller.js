@@ -2,6 +2,7 @@
 import Budget from "../models/Budget.model.js";
 import Transaction from "../models/transaction.model.js";
 import { sendNotification } from "../utils/sendNotification.js";
+import { emitToCompany } from "../utils/socket.js";
 
 // Create or update category budget
 export const setCategoryBudget = async (req, res) => {
@@ -26,6 +27,8 @@ export const setCategoryBudget = async (req, res) => {
       year,
       alertThreshold: alertThreshold || 80,
     });
+
+    emitToCompany(req.user.company, "budget:created", budget);
 
     res.status(201).json({
       success: true,
@@ -213,6 +216,8 @@ export const updateSpentAmount = async (req, res) => {
       },
     );
 
+    emitToCompany(req.user.company, "budget:updated", updatedBudget);
+
     res.status(200).json({
       success: true,
       message: `Added ${spentAmount} to spent amount`,
@@ -246,6 +251,8 @@ export const deleteBudget = async (req, res) => {
         message: "Budget not found",
       });
     }
+
+    emitToCompany(req.user.company, "budget:deleted", { _id: id });
 
     res.status(200).json({
       success: true,
@@ -295,6 +302,8 @@ export const editSpentAmount = async (req, res) => {
     budget.spentAmount = spentAmount;
 
     await budget.save();
+
+    emitToCompany(req.user.company, "budget:updated", budget);
 
     res.status(200).json({
       success: true,
@@ -351,6 +360,8 @@ export const removeSpentAmount = async (req, res) => {
     budget.spentAmount = newSpent;
 
     await budget.save();
+
+    emitToCompany(req.user.company, "budget:updated", budget);
 
     res.status(200).json({
       success: true,

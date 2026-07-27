@@ -4,6 +4,7 @@ import Project from "../models/Project.model.js";
 import { sendNotification } from "../utils/sendNotification.js";
 import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary.js";
+import { emitToCompany } from "../utils/socket.js";
 
 export const createProject = async (req, res) => {
   try {
@@ -47,6 +48,8 @@ export const createProject = async (req, res) => {
       budget: budgetNumber,
       status: "active",
     });
+
+    emitToCompany(req.user.company, "project:created", project);
 
     res.status(201).json({
       success: true,
@@ -340,6 +343,8 @@ export const updateProjectStatus = async (req, res) => {
       }).catch(console.error);
     }
 
+    emitToCompany(req.user.company, "project:updated", project);
+
     res.status(200).json({
       success: true,
       message: "Project status updated",
@@ -519,6 +524,11 @@ export const deleteProject = async (req, res) => {
 
     // 6) Delete project
     await Project.findByIdAndDelete(id);
+
+    // Related transactions were cascade-deleted above (step 5), so any
+    // open Transactions/Dashboard view also needs to refresh.
+    emitToCompany(req.user.company, "transaction:cleared", { projectId: id });
+    emitToCompany(req.user.company, "project:deleted", { _id: id });
 
     res.status(200).json({
       success: true,

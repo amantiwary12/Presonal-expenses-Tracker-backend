@@ -49,6 +49,9 @@ Thumbs.db
 # TypeScript cache
 *.tsbuildinfo
 
+# Tesseract.js downloads its language data to disk on first OCR run
+*.traineddata
+
 # Optional lock files (uncomment if needed)
 # package-lock.json
 # yarn.lock

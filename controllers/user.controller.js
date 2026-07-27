@@ -1,6 +1,7 @@
 //user controller
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import { emitToCompany } from "../utils/socket.js";
 
 const MANAGER_ROLES = ["Admin", "SuperAdmin", "HR"];
 const PRIVILEGED_ROLES = ["Admin", "SuperAdmin"];
@@ -73,18 +74,22 @@ export const createUser = async (req, res) => {
 
     console.log("User created successfully:", user._id);
 
+    const userPayload = {
+      _id: user._id,
+      name: user.name,
+      mobileNumber: user.mobileNumber,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+    };
+
+    emitToCompany(req.user.company, "user:created", userPayload);
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      user: {
-        _id: user._id,
-        name: user.name,
-        mobileNumber: user.mobileNumber,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-      },
+      user: userPayload,
     });
 
   } catch (error) {
@@ -171,6 +176,8 @@ export const updateUser = async (req, res) => {
       });
     }
 
+    emitToCompany(req.user.company, "user:updated", user);
+
     res.json({
       success: true,
       message: "User updated",
@@ -232,6 +239,8 @@ export const deleteUser = async (req, res) => {
       });
     }
 
+    emitToCompany(req.user.company, "user:deleted", { _id: req.params.id });
+
     res.json({
       success: true,
       message: "User deleted",
@@ -287,6 +296,8 @@ export const toggleUserStatus = async (req, res) => {
 
     user.isActive = !user.isActive;
     await user.save();
+
+    emitToCompany(req.user.company, "user:updated", { _id: user._id, isActive: user.isActive });
 
     res.json({
       success: true,
