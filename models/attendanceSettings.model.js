@@ -34,6 +34,29 @@ const attendanceSettingsSchema = new mongoose.Schema(
       type: Number,
       default: 4,
     },
+
+    // Google Sheet auto-import config (set by HR/Admin via the Sync Sheet card)
+    sheetUrl: {
+      type: String,
+      default: "",
+    },
+
+    // Whether the scheduler should keep re-pulling the sheet automatically
+    autoSync: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Last successful/failed sync info (updated by /sync-sheet and the scheduler)
+    lastSyncedAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastSyncResult: {
+      type: Object,
+      default: null,
+    },
   },
   { timestamps: true }
 );

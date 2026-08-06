@@ -7,6 +7,8 @@ import { importUpload } from "../middleware/importUpload.middleware.js";
 
 import {
   uploadAttendance,
+  syncAttendanceFromUrl,
+  updateAttendanceSheetConfig,
   getMyAttendance,
   getAttendanceForUser,
   setManualAttendance,
@@ -26,6 +28,12 @@ router.post(
   importUpload.single("file"),
   uploadAttendance
 );
+
+/* HR/Admin sync attendance straight from a Google Sheets link */
+router
+  .route("/sync-sheet")
+  .post(authMiddleware, allowRoles("Admin", "HR", "SuperAdmin"), syncAttendanceFromUrl)
+  .put(authMiddleware, allowRoles("Admin", "HR", "SuperAdmin"), updateAttendanceSheetConfig);
 
 /* Any logged-in user — their own month-wise attendance */
 router.get("/my", authMiddleware, getMyAttendance);

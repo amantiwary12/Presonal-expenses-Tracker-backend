@@ -6,6 +6,7 @@ import http from "http";
 import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./utils/socket.js";
+import { startAttendanceAutoSync } from "./utils/attendanceAutoSync.js";
 
 const PORT = process.env.PORT || 8000;
 
@@ -18,6 +19,9 @@ const startServer = async () => {
   httpServer.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);
   });
+
+  // Re-pull linked Google Sheets for companies with autoSync enabled.
+  startAttendanceAutoSync();
 };
 
 startServer();
